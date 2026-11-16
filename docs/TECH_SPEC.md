@@ -33,7 +33,7 @@ Sources/
   ViVuBench/                  executable `vivu-bench`: đo riêng phần decode, không cần cửa sổ
 Tests/ViVuCoreTests/          Swift Testing, fixture sinh bằng code
 Tests/ViVuRenderTests/        test ảnh mẫu (vẽ ngoài màn hình, so pixel)
-Scripts/bundle.sh, Scripts/build-libtiff.sh, Scripts/make-fixtures.swift
+Scripts/bundle.sh, Scripts/build-libtiff.sh   (dữ liệu thử: `vivu-bench make-fixtures`)
 Vendor/                       kết quả build libtiff tĩnh (không commit)
 docs/, CLAUDE.md
 ```
@@ -139,8 +139,13 @@ Quy tắc rơi về: bộ đọc riêng từ chối (định dạng con không h
 
 ### 4.2 Ba giai đoạn (tầng S; cũng là bước đầu của M và L-B)
 
-- **Giai đoạn 0, bản xem trước (≤ 5ms):** lấy theo thứ tự (a) thumbnail trong `ThumbnailCache` (RAM), (b) thumbnail/preview nhúng trong file: `CGImageSourceCreateThumbnailAtIndex` với `FromImageIfAbsent: false`, `WithTransform: true`. Không có thì bỏ qua.
-- **Giai đoạn 1, sắc nét cỡ màn hình:** `CGImageSourceCreateThumbnailAtIndex` với `FromImageAlways: true`, `ThumbnailMaxPixelSize` = cạnh dài vùng hiển thị tối đa tính bằng device pixel, `WithTransform: true`, `ShouldCacheImmediately: true`; vẽ vào `CGContext` P3 → `PixelBuffer` → texture. Kích thước yêu cầu làm tròn lên bậc ½, ¼, ⅛ của ảnh gốc khi là JPEG (decoder giảm mẫu ngay trong DCT; cỡ lẻ sẽ phải resample chậm). **RAW:** dùng `FromImageIfAbsent: true` để lấy JPEG preview nhúng.
+- **Giai đoạn 0, bản xem trước (≤ 5ms):** chỉ lấy thumbnail đã có trong `ThumbnailCache` (RAM). Không gọi ImageIO cho giai đoạn này: đo ở M0.5 cho thấy với JPEG không có thumbnail nhúng ImageIO vẫn decode từ ảnh chính (docs/SPIKES.md mục b). `ThumbnailCache` được lấp trước cho ±20 ảnh quanh ảnh hiện tại. Không có thì bỏ qua.
+- **Giai đoạn 1, sắc nét cỡ màn hình** (theo số đo M0.5, docs/SPIKES.md mục a):
+  - *JPEG:* chọn bậc nhỏ nhất trong {gốc, ½, ¼, ⅛} mà cạnh dài vẫn ≥ cạnh dài vùng hiển thị (device pixel). Nếu bậc đó là ảnh gốc: `CGImageSourceCreateImageAtIndex` (decode đầy đủ, 12MP ≈ 30ms); nếu nhỏ hơn: `CGImageSourceCreateThumbnailAtIndex` với `ThumbnailMaxPixelSize` đúng bằng bậc đó (decoder giảm mẫu trong DCT). Không bao giờ xin cỡ lẻ: ImageIO sẽ decode đủ rồi co lại, chậm gấp 5 lần. GPU co phần còn lại; texture giai đoạn 1 vì thế có thể tới 2× màn hình mỗi chiều.
+  - *Định dạng khác:* cạnh dài ≤ 1,5× vùng hiển thị → decode đầy đủ; lớn hơn → API thumbnail với `ThumbnailMaxPixelSize` = cạnh dài vùng hiển thị.
+  - Orientation: API thumbnail dùng `WithTransform: true`; đường decode đầy đủ áp orientation khi chuyển sang `PixelBuffer`.
+  - Chuyển sang BGRA8 P3 bằng `vImageConvert_AnyToAny` từ dữ liệu của CGImage (2–11ms), không vẽ qua CGContext (40–50ms); chỉ vẽ qua CGContext khi vImage không nhận định dạng nguồn.
+  - **RAW:** dùng `FromImageIfAbsent: true` để lấy JPEG preview nhúng (chưa kiểm chứng: máy phát triển không có file RAW).
 - **Giai đoạn 2, đủ phân giải:** chỉ cho ảnh hiện tại, khi (a) zoom vượt độ phân giải giai đoạn 1, hoặc (b) dừng ở ảnh ≥ 250ms. `CGImageSourceCreateImageAtIndex` → vẽ vào context (áp orientation bằng CTM) → 1 texture. Giữ tối đa 2 texture giai đoạn 2. **RAW:** chỉ develop bằng `CIRAWFilter` khi zoom vượt preview nhúng.
 
 Giai đoạn nào về thì thay texture ngay, không animation.
@@ -321,7 +326,7 @@ Bốn lớp kiểm, từ tự động tới thử tay. Kết quả tổng hợp 
 
 ### 11.4 Kiểm tra trên dữ liệu thật
 
-- **Fixture lớn** (`Scripts/make-fixtures.swift`, sinh ra ngoài repo): 5.000 JPEG; JPEG 200MP; BigTIFF tile 4GB có overview; BigTIFF 2GB không overview; TIFF 16-bit 1 kênh; PSB RLE 2GB; PNG 300MP. Thêm RAW/GIF/WebP/HEIC và ảnh vệ tinh/vũ trụ thật do người dùng cung cấp.
+- **Fixture lớn** (`vivu-bench make-fixtures <thư mục> [--huge]`, sinh ra ngoài repo): 5.000 JPEG; JPEG 200MP; BigTIFF tile 4GB có overview; BigTIFF 2GB không overview; TIFF 16-bit 1 kênh; PSB RLE 2GB; PNG 300MP. Thêm RAW/GIF/WebP/HEIC và ảnh vệ tinh/vũ trụ thật do người dùng cung cấp.
 - **Độ đúng trên file thật:** với mỗi PSB/TIFF lớn, so ảnh fit của bộ đọc riêng với ảnh fit của ImageIO (sai lệch trung bình ≤ 1/255) và so 20 vùng ngẫu nhiên ở 100% với vùng tương ứng do ImageIO decode.
 - **Không ghi đĩa:** chạy kịch bản 5.000 ảnh dưới `fs_usage` lọc theo tiến trình; không có thao tác ghi nào ngoài file `UserDefaults`.
 

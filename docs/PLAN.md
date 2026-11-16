@@ -45,7 +45,7 @@ Trạng thái: **chờ review**. Chưa viết code cho tới khi 3 tài liệu �
 | Tình huống | Mục tiêu | Đo bằng |
 |---|---|---|
 | Next/prev, ảnh đã preload | ≤ 16ms từ sự kiện tới khi frame được trình chiếu | `--bench-navigate` |
-| Next/prev, chưa preload | ≤ 50ms có bản xem trước, ≤ 150ms sắc nét | `--bench-navigate` |
+| Next/prev, chưa preload | ≤ 50ms có bản xem trước, ≤ 150ms sắc nét (JPEG; HEIC ~150–250ms vì decoder hệ thống chậm, chỉ dựa vào preload) | `--bench-navigate` |
 | Giữ phím ←/→ | Không rớt frame, không dồn hàng đợi | `--bench-navigate` |
 | Mở JPEG 24–60MP (app đã chạy) | ≤ 80ms sắc nét cỡ màn hình | `--bench-open` |
 | TIFF/PSB vài GB | ≤ 1s có hình (≤ 300ms khi file đã trong page cache hoặc TIFF có overview) | `--bench-open`, `vivu-bench huge` |
@@ -101,6 +101,7 @@ Tài liệu được viết để một model nhỏ hơn (Opus 5.5) thực hiệ
 - Cảm giác cử chỉ và hiệu ứng LilyView dựa trên mô tả; cần người dùng thử ở M4.
 - Swift 6 strict concurrency + Metal + C interop là gánh nặng lớn nhất cho model nhỏ; TECH_SPEC mục 1 quy định sẵn mẫu đồng bộ.
 - Cần `brew install cmake` để chạy `build-libtiff.sh`.
+- Kết quả M0.5 (docs/SPIKES.md): bộ đọc PSB riêng đạt < 1s nhưng chưa đạt mục tiêu ấm 300ms; HEIC decode chậm; hai bản thử (d) hiệu ứng toàn màn hình và (e) vùng nóng filmstrip dời sang đầu M4 và M5.
 
 **Giới hạn chấp nhận**
 - **macOS 14–15 và máy Intel chưa kiểm chứng được trên máy phát triển** (macOS 27, Apple Silicon). Chỉ đảm bảo: biên dịch với kiểm tra availability, và lát x86_64 chạy qua Rosetta. Hành vi thật cần người dùng thử trên máy hoặc máy ảo tương ứng.

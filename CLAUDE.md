@@ -10,7 +10,9 @@ Trình xem ảnh cực nhanh cho macOS (Swift + AppKit + Metal), phong cách Lil
 
 Ba tài liệu này là nguồn thiết kế duy nhất. Cần lệch khỏi tài liệu thì sửa tài liệu trong cùng commit và nêu lý do.
 
-**Mốc hiện tại:** M0 xong. Tiếp theo: M0.5 (đo giả định, ghi `docs/SPIKES.md`).
+**Mốc hiện tại:** M0.5 xong (kết quả đo ở `docs/SPIKES.md`). Tiếp theo: M1.
+
+Dữ liệu thử: `swift run -c release vivu-bench make-fixtures <thư mục ngoài repo> [--huge]`.
 
 ## Lệnh
 
