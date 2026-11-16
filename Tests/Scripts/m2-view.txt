@@ -1,0 +1,29 @@
+# M2: zoom, pan, rotate, chrome. pattern.png is 640×400.
+open Tests/Fixtures/pattern.png
+expect-loaded
+expect window=640x400
+expect zoom=Vừa 100%
+key +
+expect zoom=Vừa 125%
+expect window=800x500
+key 0
+expect zoom=Vừa 100%
+key backslash
+expect fit=true
+key ]
+expect turns=1
+expect window=400x640
+key [
+expect turns=0
+key cmd+right
+action hover
+expect status=true
+snapshot build/smoke/m2-hover.png
+action unhover
+wait 300
+expect status=false
+action click
+wait 300
+expect status=true
+print
+quit

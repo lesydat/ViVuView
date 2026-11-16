@@ -56,6 +56,12 @@ final class ScriptRunner {
             try await settle()
         case .print:
             print(viewer.scriptState())
+        case .action(let name):
+            try viewer.performScriptAction(name)
+            try await settle()
+        case .expect(let text):
+            let state = viewer.scriptState()
+            guard state.contains(text) else { throw ScriptError.message("expected \"\(text)\" in: \(state)") }
         }
     }
 
@@ -75,6 +81,8 @@ enum ScriptCommand: Equatable {
     case expectError
     case key(String)
     case print
+    case action(String)
+    case expect(String)
 }
 
 enum ScriptParser {
@@ -97,6 +105,8 @@ enum ScriptParser {
             case ("expect-error", nil): command = .expectError
             case ("key", let spec?): command = .key(spec)
             case ("print", nil): command = .print
+            case ("action", let name?): command = .action(name)
+            case ("expect", let text?): command = .expect(text)
             default: throw ScriptError.badLine(index + 1, line)
             }
             commands.append((index + 1, command))

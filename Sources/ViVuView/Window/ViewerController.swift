@@ -8,11 +8,12 @@ import ViVuRender
 struct DecodedTexture: @unchecked Sendable {
     let texture: MTLTexture
     let meta: ImageMeta
-    /// Size of the texture relative to the oriented image (1 = full resolution).
+    /// Texture width relative to the oriented image width (1 = full resolution).
     let coverage: Double
 }
 
 /// Owns the main window and everything shown in it (docs/TECH_SPEC.md §5.4, docs/UI_SPEC.md §2).
+/// Input and chrome live in ViewerController+Input.swift.
 @MainActor
 final class ViewerController: NSObject, NSWindowDelegate {
     let renderer: Renderer
@@ -22,16 +23,35 @@ final class ViewerController: NSObject, NSWindowDelegate {
     let content: ViewerContentView
     let metalView: MetalView
     let messageView: MessageView
+    let titleBar: TitleBarOverlay
+    let statusBar: StatusBar
+    let zoomBadge: ZoomBadge
 
     // Current image
     private(set) var currentURL: URL?
     private(set) var meta: ImageMeta?
-    private var texture: DecodedTexture?
-    private(set) var viewport = Viewport(scale: 1, center: .zero, isFit: true)
+    var texture: DecodedTexture?
+    var viewport = Viewport(scale: 1, center: .zero, isFit: true)
     private var loadTicket: DecodeTicket?
+    private var infoTicket: DecodeTicket?
+    private(set) var info: ImageInfo?
     private var loadWaiters: [CheckedContinuation<Void, Never>] = []
     private(set) var isLoading = false
     private(set) var lastError: String?
+
+    // Window behaviour
+    /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
+    var fixedFrame = false
+    private var lastFitKey: TimeInterval = 0
+    private var resizingProgrammatically = false
+
+    // Chrome and mouse state (used by ViewerController+Input.swift)
+    var chromeVisible = false
+    var chromeHideTask: Task<Void, Never>?
+    var statusPinned = false
+    var mouseDownEvent: NSEvent?
+    var dragged = false
+    var pendingClick: Task<Void, Never>?
 
     init(renderer: Renderer) {
         self.renderer = renderer
@@ -39,21 +59,30 @@ final class ViewerController: NSObject, NSWindowDelegate {
         metalView = MetalView(renderer: renderer)
         messageView = MessageView(frame: .zero)
         content = ViewerContentView(frame: NSRect(origin: .zero, size: ViewerWindow.emptySize))
+        titleBar = TitleBarOverlay(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: TitleBarOverlay.height))
+        statusBar = StatusBar(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: StatusBar.height))
+        zoomBadge = ZoomBadge(frame: NSRect(x: 0, y: 0, width: 72, height: 26))
         super.init()
         content.controller = self
         content.addFill(metalView)
         content.addFill(messageView)
+        content.addSubview(titleBar)
+        content.addSubview(statusBar)
+        content.addSubview(zoomBadge)
+        layoutOverlays()
         window.contentView = content
+        window.initialFirstResponder = content
         window.delegate = self
+        titleBar.onCommand = { [weak self] in self?.perform($0) }
+        for view in [titleBar, statusBar] as [NSView] { view.alphaValue = 0; view.isHidden = true }
         messageView.message = String(localized: "Kéo ảnh vào đây hoặc nhấn ⌘O")
         metalView.sceneProvider = { [weak self] size in self?.scene(viewSize: size) ?? [] }
-        withObservationTracking({ _ = settings.renderUnit }, onChange: { [weak self] in
-            Task { @MainActor in self?.renderUnitChanged() }
-        })
+        observeSettings()
     }
 
     func show() {
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(content)
     }
 
     // MARK: Opening
@@ -66,23 +95,26 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     func open(_ url: URL) {
         loadTicket?.cancel()
+        infoTicket?.cancel()
         isLoading = true
         currentURL = url
         lastError = nil
+        info = nil
         window.title = url.lastPathComponent
         window.representedURL = url
+        titleBar.title = url.lastPathComponent
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        updateStatus()
         let renderer = renderer
         let longSide = screenLongSide
         let preferEmbedded = settings.rawMode == .embeddedPreview
-        let signpostID = Signposts.decode.makeSignpostID()
-        let state = Signposts.decode.beginInterval("Decode", id: signpostID)
+        let state = Signposts.decode.beginInterval("Decode", id: Signposts.decode.makeSignpostID())
         loadTicket = scheduler.submit(.interactive, priority: .veryHigh, work: { isCancelled in
             let (pixels, meta) = try ImageIODecoder.screenDecode(url, screenLongSide: longSide, preferEmbedded: preferEmbedded)
             if isCancelled() { throw DecodeError.cancelled }
             let texture = try renderer.makeTexture(pixels)
-            let coverage = Double(pixels.width) / Double(max(1, meta.orientedSize.width))
-            return DecodedTexture(texture: texture, meta: meta, coverage: coverage)
+            return DecodedTexture(texture: texture, meta: meta,
+                                  coverage: Double(pixels.width) / Double(max(1, meta.orientedSize.width)))
         }, completion: { [weak self] result in
             Signposts.decode.endInterval("Decode", state)
             guard let self, currentURL == url else { return }
@@ -92,15 +124,41 @@ final class ViewerController: NSObject, NSWindowDelegate {
             }
             finishLoad()
         })
+        infoTicket = scheduler.submit(.background, priority: .high, work: { _ in try ImageInfo.read(url) },
+                                      completion: { [weak self] result in
+            guard let self, currentURL == url else { return }
+            info = try? result.get()
+            updateStatus()
+        })
     }
 
     private func show(_ decoded: DecodedTexture) {
         texture = decoded
         meta = decoded.meta
         messageView.message = ""
-        viewport = Viewport.fit(image: decoded.meta.orientedSize, view: metalView.drawableSize)
-        resizeWindowToImage()
+        let keep = settings.keepZoom && !viewport.isFit
+        if !keep { viewport = Viewport.fit(image: decoded.meta.orientedSize, view: viewSize) }
+        if settings.openSize == .always100 {
+            viewport = Viewport(scale: unitScale, center: CGPoint(x: Double(decoded.meta.orientedSize.width) / 2,
+                                                                  y: Double(decoded.meta.orientedSize.height) / 2))
+            resizeWindowToImage(zoom: 1)
+        } else if settings.openSize == .alwaysFit && !fixedFrame && !isFullScreen {
+            fillScreenForFit()
+        } else {
+            resizeWindowToImage(zoom: keep ? viewport.scale / unitScale : nil)
+        }
         metalView.setNeedsRender()
+        updateStatus()
+        updateStatusVisibility()
+    }
+
+    /// "Luôn vừa màn hình": small images are enlarged to fill the available area.
+    private func fillScreenForFit() {
+        guard let meta else { return }
+        let image = Viewport.rotatedSize(meta.orientedSize, quarterTurns: viewport.quarterTurns)
+        let f = min(availableFrame.width / image.width, availableFrame.height / image.height) / pointsPerPixel
+        resizeWindowToImage(zoom: f)
+        viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
     }
 
     private func showError(_ error: Error, url: URL) {
@@ -109,6 +167,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         lastError = "\(error)"
         messageView.message = "⚠︎ \(url.lastPathComponent)\n\(error)"
         metalView.setNeedsRender()
+        updateStatus()
     }
 
     /// Script support: waits until the current load finished (success or error).
@@ -122,43 +181,258 @@ final class ViewerController: NSObject, NSWindowDelegate {
         let waiters = loadWaiters
         loadWaiters = []
         waiters.forEach { $0.resume() }
+        updateStatus()
     }
 
-    // MARK: Window size
+    // MARK: Geometry
 
+    /// Device pixels per image pixel at 100% (docs/UI_SPEC.md §3).
+    var unitScale: Double { settings.renderUnit.unitScale(backingScale: metalView.backingScale) }
     /// Points one image pixel takes at 100%.
-    var pointsPerPixel: Double {
-        settings.renderUnit == .point ? 1 : 1 / metalView.backingScale
+    var pointsPerPixel: Double { unitScale / metalView.backingScale }
+    var viewSize: CGSize { metalView.drawableSize }
+    var isFullScreen: Bool { window.styleMask.contains(.fullScreen) }
+
+    var fitScale: Double {
+        guard let meta else { return 1 }
+        return Viewport.fitScale(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
     }
 
-    func resizeWindowToImage() {
-        guard let meta, !window.styleMask.contains(.fullScreen), let screen = window.screen ?? NSScreen.main else { return }
-        let available = screen.visibleFrame
+    /// Viewport with fit resolved for the current view size.
+    var effectiveViewport: Viewport {
+        guard let meta, viewport.isFit else { return viewport }
+        return Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+    }
+
+    var isZoomed: Bool { !viewport.isFit && abs(viewport.scale - fitScale) > fitScale * 0.001 }
+
+    /// Available screen area for the window, in points.
+    var availableFrame: CGRect {
+        (window.screen ?? NSScreen.main)?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+    }
+
+    /// Sizes the window for the current image at fit, or at `zoom` (relative to 100%) when given.
+    func resizeWindowToImage(zoom: Double? = nil) {
+        guard let meta, !isFullScreen, !fixedFrame else { clampViewport(); return }
         let image = Viewport.rotatedSize(meta.orientedSize, quarterTurns: viewport.quarterTurns)
-        let size = WindowSizing.contentSize(image: image, pointsPerPixel: pointsPerPixel, available: available.size,
-                                            minimum: ViewerWindow.minimumSize)
+        let size = WindowSizing.contentSize(image: image, pointsPerPixel: pointsPerPixel, available: availableFrame.size,
+                                            minimum: ViewerWindow.minimumSize, zoom: zoom)
         let center = window.isVisible ? CGPoint(x: window.frame.midX, y: window.frame.midY)
-                                      : CGPoint(x: available.midX, y: available.midY)
-        let frame = WindowSizing.frame(size: size, center: center, available: available)
-        if frame != window.frame { window.setFrame(frame, display: true, animate: false) }
+                                      : CGPoint(x: availableFrame.midX, y: availableFrame.midY)
+        let frame = WindowSizing.frame(size: size, center: center, available: availableFrame)
+        if frame != window.frame {
+            resizingProgrammatically = true
+            window.setFrame(frame, display: true, animate: false)
+            resizingProgrammatically = false
+        }
+        clampViewport()
+    }
+
+    func clampViewport() {
+        guard let meta else { return }
         if viewport.isFit {
-            viewport = Viewport.fit(image: meta.orientedSize, view: metalView.drawableSize, quarterTurns: viewport.quarterTurns)
+            viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+        } else {
+            viewport = viewport.clamped(image: meta.orientedSize, view: viewSize)
         }
     }
 
-    private func renderUnitChanged() {
+    // MARK: Zoom, pan, rotate
+
+    /// Zooms to `scale` keeping `anchor` (view point, device pixels) still; grows the window with the zoom.
+    func zoom(to scale: Double, anchor: CGPoint? = nil, flash: Bool = true) {
+        guard let meta else { return }
+        let range = ZoomSteps.limits(fitScale: fitScale, unitScale: unitScale)
+        let target = min(max(scale, range.lowerBound), range.upperBound)
+        let anchor = anchor ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
+        viewport = effectiveViewport.zoomed(to: target, anchor: anchor, view: viewSize)
+        if !isFullScreen && !fixedFrame { resizeWindowToImage(zoom: target / unitScale) }
+        if abs(target - fitScale) < fitScale * 0.001 {
+            viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+        }
+        clampViewport()
+        metalView.setNeedsRender()
+        updateStatus()
+        if flash && !statusBarShown { zoomBadge.flash(zoomText) }
+        viewportChanged()
+    }
+
+    func zoomStep(in zoomIn: Bool, anchor: CGPoint? = nil) {
+        let next = ZoomSteps.step(from: effectiveViewport.scale, factor: settings.zoomStep, zoomIn: zoomIn,
+                                  fitScale: fitScale, unitScale: unitScale)
+        zoom(to: next, anchor: anchor)
+    }
+
+    func fitToWindow() {
+        guard let meta else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastFitKey < 0.6 { fixedFrame = false }   // `\` twice: follow the image size again
+        lastFitKey = now
+        viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
         resizeWindowToImage()
         metalView.setNeedsRender()
-        withObservationTracking({ _ = settings.renderUnit }, onChange: { [weak self] in
-            Task { @MainActor in self?.renderUnitChanged() }
+        updateStatus()
+        if !statusBarShown { zoomBadge.flash(zoomText) }
+        viewportChanged()
+    }
+
+    func pan(by delta: CGVector) {
+        guard meta != nil, !viewport.isFit else { return }
+        viewport = viewport.panned(by: delta)
+        clampViewport()
+        metalView.setNeedsRender()
+        viewportChanged()
+    }
+
+    func rotate(clockwise: Bool) {
+        guard let meta else { return }
+        let turns = viewport.quarterTurns + (clockwise ? 1 : 3)
+        viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: turns)
+        resizeWindowToImage()
+        clampViewport()
+        metalView.setNeedsRender()
+        viewportChanged()
+    }
+
+    /// Hook for zoom-dependent work (full-resolution decode, tiles) added in later milestones.
+    func viewportChanged() {}
+
+    var zoomText: String {
+        viewport.isFit ? String(localized: "Vừa") + " \(Format.percent(effectiveViewport.scale / unitScale * 100))"
+                       : Format.percent(viewport.scale / unitScale * 100)
+    }
+
+    // MARK: Commands
+
+    func perform(_ command: Command) {
+        let step = max(viewSize.width, viewSize.height) * 0.1
+        switch command {
+        case .zoomIn: zoomStep(in: true)
+        case .zoomOut: zoomStep(in: false)
+        case .actualSize: zoom(to: unitScale)
+        case .fit: fitToWindow()
+        case .panLeft: pan(by: CGVector(dx: step, dy: 0))
+        case .panRight: pan(by: CGVector(dx: -step, dy: 0))
+        case .panUp: pan(by: CGVector(dx: 0, dy: step))
+        case .panDown: pan(by: CGVector(dx: 0, dy: -step))
+        case .rotateLeft: rotate(clockwise: false)
+        case .rotateRight: rotate(clockwise: true)
+        case .toggleFullScreen: window.toggleFullScreen(nil)
+        case .followImageSize:
+            fixedFrame = false
+            resizeWindowToImage()
+            metalView.setNeedsRender()
+        case .copyImage: copyImage()
+        case .copyPath:
+            guard let url = currentURL else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(url.path, forType: .string)
+        case .revealInFinder:
+            if let url = currentURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        case .escape:
+            if isFullScreen { window.toggleFullScreen(nil) } else { window.performClose(nil) }
+        case .next, .previous, .first, .last, .toggleFilmstrip, .toggleGallery, .toggleInfo, .toggleStretch,
+             .previousFrame, .nextFrame, .togglePlayback, .moveToTrash:
+            performLater(command)
+        }
+    }
+
+    /// Commands whose features arrive in later milestones.
+    func performLater(_ command: Command) {
+        NSSound.beep()
+    }
+
+    private func copyImage() {
+        guard let url = currentURL else { return }
+        let board = NSPasteboard.general
+        board.clearContents()
+        var objects: [NSPasteboardWriting] = [url as NSURL]
+        // Very large files are copied as a file reference only, never decoded in full for the clipboard.
+        if (meta?.storedSize.megapixels ?? 0) <= 100, let image = NSImage(contentsOf: url) { objects.insert(image, at: 0) }
+        board.writeObjects(objects)
+    }
+
+    // MARK: Status bar
+
+    /// Status bar items in priority order (docs/UI_SPEC.md §2.3).
+    func updateStatus() {
+        var items: [String] = []
+        if isFullScreen, let url = currentURL { items.append(url.lastPathComponent) }
+        if let position = positionText { items.append(position) }
+        if let meta {
+            items.append("\(meta.orientedSize.width)×\(meta.orientedSize.height)")
+            items.append(Format.bytes(meta.fileSize))
+            items.append(zoomText)
+        }
+        if let info {
+            if let date = info.dateTaken ?? info.dateModified {
+                items.append(date.formatted(date: .numeric, time: .shortened))
+            }
+            if let exposure = info.exposureSummary { items.append(exposure) }
+            if let camera = info.camera { items.append(camera) }
+        }
+        if isLoading { items.append(String(localized: "đang nạp…")) }
+        if let lastError, meta == nil { items.append(lastError) }
+        statusBar.update(items: items)
+    }
+
+    /// "12/384"; filled in by folder navigation (M3).
+    var positionText: String? { nil }
+
+    // MARK: Settings
+
+    private func observeSettings() {
+        withObservationTracking({
+            _ = settings.renderUnit
+            _ = settings.statusBar
+            _ = settings.background
+        }, onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.applySettings()
+                self.observeSettings()
+            }
         })
     }
 
-    func windowDidResize(_ notification: Notification) {
-        if let meta, viewport.isFit {
-            viewport = Viewport.fit(image: meta.orientedSize, view: metalView.drawableSize, quarterTurns: viewport.quarterTurns)
+    func applySettings() {
+        switch settings.background {
+        case .black, .checkerboard: metalView.clearColor = SIMD4(0, 0, 0, 1)
+        case .darkGray: metalView.clearColor = SIMD4(0.11, 0.11, 0.12, 1)
         }
+        resizeWindowToImage()
+        updateStatusVisibility()
+        updateStatus()
         metalView.setNeedsRender()
+    }
+
+    // MARK: Window delegate
+
+    func windowDidResize(_ notification: Notification) {
+        layoutOverlays()
+        clampViewport()
+        metalView.setNeedsRender()
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        if !resizingProgrammatically && !isFullScreen && meta != nil { fixedFrame = true }
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        clampViewport()
+        hideChrome()
+        updateStatus()
+        metalView.setNeedsRender()
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        resizeWindowToImage()
+        updateStatus()
+        metalView.setNeedsRender()
+    }
+
+    func windowDidChangeBackingProperties(_ notification: Notification) {
+        resizeWindowToImage()
     }
 
     // MARK: Scene
@@ -177,14 +451,30 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Script support
 
     func performScriptKey(_ spec: String) throws {
-        throw ScriptError.message("unknown key \(spec)")
+        guard let (key, chars, mods) = KeyBindings.parse(spec) else { throw ScriptError.message("bad key \(spec)") }
+        guard let command = KeyBindings.command(key: key, characters: chars, modifiers: mods, context: keyContext) else {
+            throw ScriptError.message("key \(spec) does nothing")
+        }
+        perform(command)
+    }
+
+    func performScriptAction(_ name: String) throws {
+        switch name {
+        case "hover": mouseMoved()
+        case "unhover": mouseExited()
+        case "click": toggleStatusPin()
+        default:
+            guard let command = Command(rawValue: name) else { throw ScriptError.message("unknown action \(name)") }
+            perform(command)
+        }
     }
 
     func scriptState() -> String {
         let f = window.frame
         return "image=\(currentURL?.lastPathComponent ?? "-") size=\(meta.map { "\($0.orientedSize)" } ?? "-") "
-            + "scale=\(String(format: "%.4f", viewport.scale)) fit=\(viewport.isFit) turns=\(viewport.quarterTurns) "
-            + "window=\(Int(f.width))x\(Int(f.height)) backing=\(metalView.backingScale) error=\(lastError ?? "-")"
+            + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
+            + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
+            + "status=\(statusBarShown) error=\(lastError ?? "-")"
     }
 
     /// The window content as an image: the Metal scene with the visible overlays drawn on top.
@@ -198,52 +488,17 @@ final class ViewerController: NSObject, NSWindowDelegate {
         if let scene = metalView.snapshotImage() {
             NSGraphicsContext.current?.cgContext.draw(scene, in: metalView.frame)
         }
-        NSGraphicsContext.restoreGraphicsState()
-        for overlay in content.subviews where overlay !== metalView && !overlay.isHidden {
+        for overlay in content.subviews where overlay !== metalView && !overlay.isHidden && overlay.alphaValue > 0 {
+            // Glass does not render into bitmaps; draw a dark stand-in behind the overlay's contents.
+            if overlay === titleBar || overlay === statusBar {
+                NSColor(white: 0.12, alpha: 0.85).setFill()
+                overlay.frame.fill()
+            }
             guard let overlayRep = overlay.bitmapImageRepForCachingDisplay(in: overlay.bounds) else { continue }
             overlay.cacheDisplay(in: overlay.bounds, to: overlayRep)
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
             overlayRep.draw(in: overlay.frame, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
-            NSGraphicsContext.restoreGraphicsState()
         }
+        NSGraphicsContext.restoreGraphicsState()
         return rep
-    }
-}
-
-/// Content view of the main window: hosts the Metal view and overlays, accepts dropped files.
-final class ViewerContentView: NSView {
-    weak var controller: ViewerController?
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.black.cgColor
-        registerForDraggedTypes([.fileURL])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
-
-    func addFill(_ view: NSView) {
-        view.frame = bounds
-        view.autoresizingMask = [.width, .height]
-        addSubview(view)
-    }
-
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        imageURL(from: sender) != nil ? .copy : []
-    }
-
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        guard let url = imageURL(from: sender) else { return false }
-        MainActor.assumeIsolated { controller?.open(url) }
-        return true
-    }
-
-    private func imageURL(from info: NSDraggingInfo) -> URL? {
-        let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self],
-                                                       options: [.urlReadingFileURLsOnly: true]) as? [URL]
-        return urls?.first { FormatCatalog.isImage($0) } ?? urls?.first
     }
 }
