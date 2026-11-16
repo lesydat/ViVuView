@@ -1,0 +1,27 @@
+# M3: folder navigation in Tests/Fixtures (10 files, name order).
+open Tests/Fixtures/orientation-1.jpg
+expect-loaded
+wait 300
+expect pos=2/10
+key right
+expect pos=3/10
+expect image=orientation-2.jpg
+key cmd+right
+expect pos=4/10
+key space
+expect pos=5/10
+key shift+space
+expect pos=4/10
+key end
+expect pos=10/10
+expect image=pattern.png
+key right
+expect pos=10/10
+key home
+expect pos=1/10
+expect-error
+key pagedown
+expect pos=2/10
+expect-loaded
+snapshot build/smoke/m3-nav.png
+quit

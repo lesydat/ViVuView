@@ -28,16 +28,17 @@ final class ViewerController: NSObject, NSWindowDelegate {
     let zoomBadge: ZoomBadge
 
     // Current image
-    private(set) var currentURL: URL?
-    private(set) var meta: ImageMeta?
+    var currentURL: URL?
+    var meta: ImageMeta?
     var texture: DecodedTexture?
     var viewport = Viewport(scale: 1, center: .zero, isFit: true)
-    private var loadTicket: DecodeTicket?
-    private var infoTicket: DecodeTicket?
-    private(set) var info: ImageInfo?
+    var infoTicket: DecodeTicket?
+    var info: ImageInfo?
     private var loadWaiters: [CheckedContinuation<Void, Never>] = []
-    private(set) var isLoading = false
-    private(set) var lastError: String?
+    var isLoading = false
+    var lastError: String?
+    /// Folder, position and decoded neighbours (ViewerController+Navigation.swift).
+    let nav = NavigationState()
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
@@ -93,49 +94,17 @@ final class ViewerController: NSObject, NSWindowDelegate {
         return sides.max() ?? 3024
     }
 
-    func open(_ url: URL) {
-        loadTicket?.cancel()
-        infoTicket?.cancel()
-        isLoading = true
-        currentURL = url
-        lastError = nil
-        info = nil
-        window.title = url.lastPathComponent
-        window.representedURL = url
-        titleBar.title = url.lastPathComponent
-        NSDocumentController.shared.noteNewRecentDocumentURL(url)
-        updateStatus()
-        let renderer = renderer
-        let longSide = screenLongSide
-        let preferEmbedded = settings.rawMode == .embeddedPreview
-        let state = Signposts.decode.beginInterval("Decode", id: Signposts.decode.makeSignpostID())
-        loadTicket = scheduler.submit(.interactive, priority: .veryHigh, work: { isCancelled in
-            let (pixels, meta) = try ImageIODecoder.screenDecode(url, screenLongSide: longSide, preferEmbedded: preferEmbedded)
-            if isCancelled() { throw DecodeError.cancelled }
-            let texture = try renderer.makeTexture(pixels)
-            return DecodedTexture(texture: texture, meta: meta,
-                                  coverage: Double(pixels.width) / Double(max(1, meta.orientedSize.width)))
-        }, completion: { [weak self] result in
-            Signposts.decode.endInterval("Decode", state)
-            guard let self, currentURL == url else { return }
-            switch result {
-            case .success(let decoded): show(decoded)
-            case .failure(let error): showError(error, url: url)
-            }
-            finishLoad()
-        })
-        infoTicket = scheduler.submit(.background, priority: .high, work: { _ in try ImageInfo.read(url) },
-                                      completion: { [weak self] result in
-            guard let self, currentURL == url else { return }
-            info = try? result.get()
-            updateStatus()
-        })
-    }
-
-    private func show(_ decoded: DecodedTexture) {
+    /// Shows a decoded image as the current one (called by navigation when the current slot has pixels).
+    func showDecoded(_ decoded: DecodedTexture, url: URL, isNewImage: Bool) {
         texture = decoded
         meta = decoded.meta
+        lastError = nil
         messageView.message = ""
+        guard isNewImage else {
+            // A sharper stage of the same image: keep the viewport, just redraw.
+            metalView.setNeedsRender()
+            return
+        }
         let keep = settings.keepZoom && !viewport.isFit
         if !keep { viewport = Viewport.fit(image: decoded.meta.orientedSize, view: viewSize) }
         if settings.openSize == .always100 {
@@ -161,10 +130,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
         viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
     }
 
-    private func showError(_ error: Error, url: URL) {
+    func showError(_ error: String, url: URL) {
         texture = nil
         meta = nil
-        lastError = "\(error)"
+        lastError = error
         messageView.message = "⚠︎ \(url.lastPathComponent)\n\(error)"
         metalView.setNeedsRender()
         updateStatus()
@@ -176,7 +145,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         await withCheckedContinuation { loadWaiters.append($0) }
     }
 
-    private func finishLoad() {
+    func finishLoad() {
         isLoading = false
         let waiters = loadWaiters
         loadWaiters = []
@@ -305,16 +274,16 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Commands
 
     func perform(_ command: Command) {
-        let step = max(viewSize.width, viewSize.height) * 0.1
+        let panStep = max(viewSize.width, viewSize.height) * 0.1
         switch command {
         case .zoomIn: zoomStep(in: true)
         case .zoomOut: zoomStep(in: false)
         case .actualSize: zoom(to: unitScale)
         case .fit: fitToWindow()
-        case .panLeft: pan(by: CGVector(dx: step, dy: 0))
-        case .panRight: pan(by: CGVector(dx: -step, dy: 0))
-        case .panUp: pan(by: CGVector(dx: 0, dy: step))
-        case .panDown: pan(by: CGVector(dx: 0, dy: -step))
+        case .panLeft: pan(by: CGVector(dx: panStep, dy: 0))
+        case .panRight: pan(by: CGVector(dx: -panStep, dy: 0))
+        case .panUp: pan(by: CGVector(dx: 0, dy: panStep))
+        case .panDown: pan(by: CGVector(dx: 0, dy: -panStep))
         case .rotateLeft: rotate(clockwise: false)
         case .rotateRight: rotate(clockwise: true)
         case .toggleFullScreen: window.toggleFullScreen(nil)
@@ -331,8 +300,13 @@ final class ViewerController: NSObject, NSWindowDelegate {
             if let url = currentURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         case .escape:
             if isFullScreen { window.toggleFullScreen(nil) } else { window.performClose(nil) }
-        case .next, .previous, .first, .last, .toggleFilmstrip, .toggleGallery, .toggleInfo, .toggleStretch,
-             .previousFrame, .nextFrame, .togglePlayback, .moveToTrash:
+        case .next: step(by: 1)
+        case .previous: step(by: -1)
+        case .first: go(to: 0, direction: 1)
+        case .last: go(to: nav.entries.count - 1, direction: -1)
+        case .moveToTrash: moveCurrentToTrash()
+        case .toggleFilmstrip, .toggleGallery, .toggleInfo, .toggleStretch,
+             .previousFrame, .nextFrame, .togglePlayback:
             performLater(command)
         }
     }
@@ -376,8 +350,11 @@ final class ViewerController: NSObject, NSWindowDelegate {
         statusBar.update(items: items)
     }
 
-    /// "12/384"; filled in by folder navigation (M3).
-    var positionText: String? { nil }
+    /// "12/384".
+    var positionText: String? {
+        guard nav.entries.count > 1, let i = nav.index else { return nil }
+        return "\(i + 1)/\(nav.entries.count)"
+    }
 
     // MARK: Settings
 
@@ -471,7 +448,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     func scriptState() -> String {
         let f = window.frame
-        return "image=\(currentURL?.lastPathComponent ?? "-") size=\(meta.map { "\($0.orientedSize)" } ?? "-") "
+        return "image=\(currentURL?.lastPathComponent ?? "-") pos=\(positionText ?? "-") size=\(meta.map { "\($0.orientedSize)" } ?? "-") "
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
             + "status=\(statusBarShown) error=\(lastError ?? "-")"

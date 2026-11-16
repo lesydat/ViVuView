@@ -78,6 +78,8 @@ public final class DecodeTicket: @unchecked Sendable {
 
     public var isFinished: Bool { lock.withLock { operation?.isFinished ?? true } }
 
+    public var isExecuting: Bool { lock.withLock { operation?.isExecuting ?? false } }
+
     public func cancel() {
         let op: Operation? = lock.withLock {
             cancelled = true

@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let arguments: [String]
     private(set) var viewer: ViewerController?
     private var scriptRunner: ScriptRunner?
+    private var benchRunner: BenchRunner?
     /// Files handed over before the window exists (Finder double-click at launch).
     private var pendingOpen: URL?
 
@@ -30,6 +31,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let viewer = ViewerController(renderer: renderer)
         self.viewer = viewer
+        if arguments.contains(where: { $0.hasPrefix("--bench-") }) {
+            let bench = BenchRunner(viewer: viewer)
+            benchRunner = bench
+            if let file = Self.value(after: "--bench-open", in: arguments) ?? Self.value(after: "--bench-idle", in: arguments) {
+                viewer.open(URL(fileURLWithPath: file))
+            }
+            viewer.show()
+            NSApp.activate()
+            Task { await bench.run(arguments: arguments) }
+            return
+        }
         if let url = pendingOpen ?? Self.fileArguments(arguments).first {
             viewer.open(url)
         }

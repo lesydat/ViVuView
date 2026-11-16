@@ -14,8 +14,10 @@ final class MetalView: NSView {
     var clearColor = SIMD4<Double>(0, 0, 0, 1)
     /// Asked every frame while the display link runs; return false to stop it.
     var animationStep: ((CFTimeInterval) -> Bool)?
-    /// Called with the time the last frame actually reached the screen (benchmarks).
-    var onPresented: (@MainActor @Sendable (CFTimeInterval) -> Void)?
+    /// Called with a frame's number and the time it actually reached the screen (benchmarks).
+    var onPresented: (@MainActor @Sendable (Int, CFTimeInterval) -> Void)?
+    /// Number of the frame being (or last) rendered; the scene provider can read it.
+    private(set) var frameNumber = 0
 
     private var metalLayer: CAMetalLayer { layer as! CAMetalLayer }
     private var renderScheduled = false
@@ -93,11 +95,15 @@ final class MetalView: NSView {
         guard size.width >= 1, size.height >= 1 else { return }
         metalLayer.presentsWithTransaction = synchronously
         guard let drawable = metalLayer.nextDrawable() else { return }
+        frameNumber += 1
+        let frame = frameNumber
         renderer.encode(provider(size), into: buffer, target: drawable.texture, clear: clearColor)
         if let onPresented {
             drawable.addPresentedHandler { presented in
-                let time = presented.presentedTime
-                Task { @MainActor in onPresented(time) }
+                // presentedTime is 0 on some systems (seen on macOS 27); the handler itself runs right
+                // after presentation, so its own clock is the fallback.
+                let time = presented.presentedTime > 0 ? presented.presentedTime : CACurrentMediaTime()
+                Task { @MainActor in onPresented(frame, time) }
             }
         }
         if synchronously {

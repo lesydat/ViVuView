@@ -1,6 +1,13 @@
 import AppKit
 
 // Entry point: no storyboard or xib (docs/TECH_SPEC.md §1).
+import QuartzCore
+
+/// Process start in CACurrentMediaTime units, for --bench-open.
+let launchUptime = CACurrentMediaTime()
+// Line-buffered output so script and bench results appear immediately when redirected.
+setvbuf(stdout, nil, _IOLBF, 0)
+
 MainActor.assumeIsolated {
     let app = NSApplication.shared
     let delegate = AppDelegate(arguments: CommandLine.arguments)

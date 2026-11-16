@@ -308,7 +308,7 @@ Bốn lớp kiểm, từ tự động tới thử tay. Kết quả tổng hợp 
 ### 11.2 Đo hiệu năng
 
 - **Trong app thật (số dùng để so với PLAN mục 3):**
-  - `--bench-navigate <thư mục>`: app mở cửa sổ, tự chuyển ảnh 500 lần ở 3 nhịp (từng ảnh có nghỉ, liên tục, nhịp lặp phím), đo từ lúc nhận sự kiện tới lúc drawable được trình chiếu (`MTLDrawable.addPresentedHandler`); in p50/p95/max và số frame rớt.
+  - `--bench-navigate <thư mục>`: app mở cửa sổ, tự chuyển ảnh 500 lần ở 3 nhịp (từng ảnh có nghỉ, liên tục, nhịp lặp phím), đo từ lúc nhận sự kiện tới lúc drawable được trình chiếu (`MTLDrawable.addPresentedHandler`; trên macOS 27 `presentedTime` luôn bằng 0 nên dùng đồng hồ tại lúc handler chạy, sai lệch dưới 1 khung); in p50/p95/max và số frame rớt.
   - `--bench-open <file>`: thời gian từ `application(_:open:)` tới frame đầu và tới frame sắc nét.
 - **Không cửa sổ (`vivu-bench`, để tách riêng phần decode):** `decode <file>`, `huge <file>` (fit-decode nguội/ấm, thời gian đọc vùng ở 100%).
 - **Bộ nhớ:** mọi bench in `phys_footprint` đỉnh (`task_info`).
