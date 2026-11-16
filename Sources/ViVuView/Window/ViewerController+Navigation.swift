@@ -12,6 +12,8 @@ final class ImageSlot {
     /// Stage 1: sharp at screen size.
     var screen: DecodedTexture?
     var error: String?
+    /// Huge TIFF/PSB: the reader to zoom with, kept only for the current image and the next one.
+    var source: RegionSource?
     var ticket: DecodeTicket?
     var lane: DecodeScheduler.Lane?
 
@@ -218,6 +220,8 @@ extension ViewerController {
             slot.ticket?.cancel()
             nav.slots[url] = nil
         }
+        // Region sources of huge files hold hundreds of MB: keep them for the current image and the next only.
+        for (rank, url) in wanted.enumerated() where rank > 1 { nav.slots[url]?.source = nil }
         for (rank, url) in wanted.enumerated() {
             let slot = slot(for: url)
             if slot.isDone { continue }
@@ -250,18 +254,21 @@ extension ViewerController {
         slot.ticket = scheduler.submit(lane, priority: priority, work: { isCancelled in
             let state = Signposts.decode.beginInterval("Decode", id: Signposts.decode.makeSignpostID(), "\(url.lastPathComponent)")
             defer { Signposts.decode.endInterval("Decode", state) }
-            let (pixels, meta) = try ImageIODecoder.screenDecode(url, screenLongSide: longSide, preferEmbedded: preferEmbedded)
+            let (pixels, meta, source) = try SourceFactory.screenDecode(url, screenLongSide: longSide,
+                                                                         preferEmbedded: preferEmbedded, isCancelled: isCancelled)
             if isCancelled() { throw DecodeError.cancelled }
             let texture = try renderer.makeTexture(pixels)
-            return DecodedTexture(texture: texture, meta: meta,
-                                  coverage: Double(pixels.width) / Double(max(1, meta.orientedSize.width)))
+            return (DecodedTexture(texture: texture, meta: meta,
+                                   coverage: Double(pixels.width) / Double(max(1, meta.orientedSize.width))),
+                    source.map(SourceBox.init))
         }, completion: { [weak self] result in
             guard let self, nav.slots[url] === slot else { return }
             slot.ticket = nil
             switch result {
-            case .success(let decoded):
+            case .success(let (decoded, box)):
                 slot.screen = decoded
                 slot.meta = decoded.meta
+                slot.source = box?.source
             case .failure(DecodeError.cancelled):
                 return
             case .failure(let error):

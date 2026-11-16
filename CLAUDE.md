@@ -10,16 +10,17 @@ Trình xem ảnh cực nhanh cho macOS (Swift + AppKit + Metal), phong cách Lil
 
 Ba tài liệu này là nguồn thiết kế duy nhất. Cần lệch khỏi tài liệu thì sửa tài liệu trong cùng commit và nêu lý do.
 
-**Mốc hiện tại:** M7 xong. Tiếp theo: M8.
+**Mốc hiện tại:** M8 xong. Tiếp theo: M9.
 
 Dữ liệu thử: `swift run -c release vivu-bench make-fixtures <thư mục ngoài repo> [--huge]`.
 
 ## Lệnh
 
 ```bash
-swift build                      # debug
+swift build                      # debug (cần Vendor/: chạy Scripts/build-libtiff.sh một lần)
 swift test                       # Swift Testing: ViVuCoreTests, ViVuRenderTests
-Scripts/bundle.sh                # build/ViVuView.app, universal arm64 + x86_64, ký ad-hoc
+Scripts/build-libtiff.sh         # libtiff/libjpeg-turbo/zstd tĩnh universal vào Vendor/ (cần cmake; bundle.sh tự gọi)
+Scripts/bundle.sh                # build/ViVuView.app, universal arm64 + x86_64, ký ad-hoc, kiểm otool -L
 build/ViVuView.app/Contents/MacOS/ViVuView --script Tests/Scripts/smoke.txt          # smoke, ghi build/smoke/*.png
 arch -x86_64 build/ViVuView.app/Contents/MacOS/ViVuView --script Tests/Scripts/smoke.txt  # lát Intel qua Rosetta
 swift run vivu-bench <lệnh>      # đo decode không cần cửa sổ

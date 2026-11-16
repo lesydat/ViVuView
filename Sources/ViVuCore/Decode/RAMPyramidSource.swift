@@ -75,6 +75,8 @@ public enum ImageTier: Equatable, Sendable {
     case ramPyramid
     /// Too big for RAM at full size: decoded subsampled by `factor`, shown with tiles.
     case subsampled(factor: Int)
+    /// Huge TIFF / PSB read by an own reader straight from the file (tier L-A).
+    case region
 
     public static func classify(_ size: PixelSize, maxTextureSide: Int, physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> ImageTier {
         if size.megapixels <= Tuning.singleTextureMegapixels && size.longSide <= maxTextureSide { return .single }

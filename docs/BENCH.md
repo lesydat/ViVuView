@@ -23,3 +23,7 @@ Mỗi mốc ghi kết quả đo ở đây (TECH_SPEC mục 11.2). Mốc sau ch�
 | M7 | 2026-11-16 | như trên | M7 | JPEG 200MP: có hình / pyramid xong / 100% đủ tile / pan đủ tile | 629ms / 2,6s / 20ms / 79ms | — | — | RAM đỉnh 3,1GB (ImageIO giữ thêm một bản decode 0,8GB trong lúc dựng) |
 | M7 | 2026-11-16 | như trên | M7 | JPEG 72MP: có hình / pyramid xong / 100% đủ tile / pan | 302ms / 758ms / 22ms / 9ms | — | — | RAM đỉnh 1,3GB |
 | M7 | 2026-11-16 | như trên | M7 | Next/prev đã preload (A2) / liên tục (B) / giữ phím (C) | 2,8 / 9,8 / 3,2ms | 10,8 / 63,3 / 7,1ms | 16,1 / 114 / 8,8ms | Không chậm hơn M5 |
+| M8 | 2026-11-16 | như trên | M8 | BigTIFF 720MP có 5 overview (3GB): ảnh vừa màn hình (bench) / mở tính từ khởi động app | 21–58ms / 225ms | — | — | ImageIO 8,9s; RAM đỉnh 0,7GB khi zoom/pan |
+| M8 | 2026-11-16 | như trên | M8 | TIFF 720MP không overview (2,2GB): fit + tầng RAM / mở từ khởi động | 0,77–0,97s / 0,97s | — | — | ImageIO 6,6–8,6s; mục tiêu ấm 300ms **chưa đạt** (đọc 2,2GB); RAM đỉnh 1,04GB |
+| M8 | 2026-11-16 | như trên | M8 | PSB 480MP RLE (1,4GB): fit + tầng RAM / mở từ khởi động | 0,66–1,05s / 0,95s | — | — | ImageIO 2,4–3,0s; mục tiêu ấm 300ms **chưa đạt**; RAM đỉnh 0,72GB |
+| M8 | 2026-11-16 | như trên | M8 | Ảnh khổng lồ: đủ tile ở 100% / sau khi pan | 74–278ms / 50–124ms | — | — | Mục tiêu pan ≤150ms: đạt |

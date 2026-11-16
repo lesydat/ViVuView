@@ -12,6 +12,9 @@ BUILD_NUMBER="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 MIN_MACOS="14.0"
 ARCH_FLAGS=(--arch arm64 --arch x86_64)
 
+# Static libtiff / libjpeg-turbo / zstd (no-op when Vendor/ is current).
+Scripts/build-libtiff.sh
+
 echo "==> swift build (release, universal)"
 swift build -c release "${ARCH_FLAGS[@]}" --product "$APP_NAME"
 swift build -c release "${ARCH_FLAGS[@]}" --product vivu-bench
@@ -24,6 +27,8 @@ echo "==> assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
+mkdir -p "$APP/Contents/Resources/Licenses"
+cp Vendor/licenses/*.txt "$APP/Contents/Resources/Licenses/"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -63,5 +68,15 @@ for arch in arm64 x86_64; do
         exit 1
     fi
 done
+
+# Only system libraries may be linked dynamically (docs/TECH_SPEC.md §11.6).
+NON_SYSTEM="$(otool -L "$APP/Contents/MacOS/$APP_NAME" | grep -E '^[[:space:]]' | awk '{print $1}' \
+    | grep -vE '^(/usr/lib/|/System/Library/)' || true)"
+if [[ -n "$NON_SYSTEM" ]]; then
+    echo "error: non-system libraries linked:" >&2
+    echo "$NON_SYSTEM" >&2
+    exit 1
+fi
+echo "==> linked libraries: system only"
 
 echo "==> done: $APP"

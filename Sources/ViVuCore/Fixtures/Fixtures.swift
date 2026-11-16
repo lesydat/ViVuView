@@ -205,6 +205,45 @@ public enum TIFFWriter {
     }
 }
 
+extension TIFFWriter {
+    /// Classic TIFF, 16-bit grayscale, uncompressed strips of `rowsPerStrip` rows (raw-path tests).
+    public static func writeGray16(to url: URL, width: Int, height: Int, rowsPerStrip: Int = 16,
+                                   value: (_ x: Int, _ y: Int) -> UInt16) throws {
+        var pixels = Data(capacity: width * height * 2)
+        for y in 0..<height { for x in 0..<width { pixels.appendLE(UInt64(value(x, y)), 2) } }
+        let strips = (height + rowsPerStrip - 1) / rowsPerStrip
+        var file = Data([0x49, 0x49])
+        file.appendLE(42, 2)
+        let dataStart = 8
+        let ifdStart = dataStart + pixels.count
+        file.appendLE(UInt64(ifdStart), 4)
+        file.append(pixels)
+        let entries = 10
+        let arrays = ifdStart + 2 + entries * 12 + 4
+        let offsetsAt = arrays, countsAt = arrays + strips * 4
+        var ifd = Data()
+        ifd.appendLE(UInt64(entries), 2)
+        func entry(_ tag: UInt64, _ type: UInt64, _ count: UInt64, _ value: UInt64) {
+            ifd.appendLE(tag, 2); ifd.appendLE(type, 2); ifd.appendLE(count, 4); ifd.appendLE(value, 4)
+        }
+        entry(256, 4, 1, UInt64(width))
+        entry(257, 4, 1, UInt64(height))
+        entry(258, 3, 1, 16)
+        entry(259, 3, 1, 1)
+        entry(262, 3, 1, 1)                                    // black is zero
+        entry(273, 4, UInt64(strips), strips == 1 ? UInt64(dataStart) : UInt64(offsetsAt))
+        entry(277, 3, 1, 1)
+        entry(278, 4, 1, UInt64(rowsPerStrip))
+        entry(279, 4, UInt64(strips), strips == 1 ? UInt64(width * height * 2) : UInt64(countsAt))
+        entry(339, 3, 1, 1)                                    // unsigned
+        ifd.appendLE(0, 4)
+        for s in 0..<strips { ifd.appendLE(UInt64(dataStart + s * rowsPerStrip * width * 2), 4) }
+        for s in 0..<strips { ifd.appendLE(UInt64(min(rowsPerStrip, height - s * rowsPerStrip) * width * 2), 4) }
+        file.append(ifd)
+        try file.write(to: url)
+    }
+}
+
 /// Small images through ImageIO (JPEG, PNG, HEIC…), for folders of many files.
 public enum ImageWriter {
     public static func write(_ buffer: PixelBuffer, to url: URL, type: UTType, quality: Double = 0.85,

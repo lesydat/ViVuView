@@ -10,7 +10,7 @@ usage: vivu-bench <command> [args]
 commands:
   version                         print the bench version
   decode <file>...                time meta / embedded preview / screen decode / full decode (ImageIO)
-  huge <file> [--fit N]           fit-decode a huge PSB/PSD with the own reader and with ImageIO, cold and warm
+  huge <file> [--fit N] [--imageio]  own reader for a huge TIFF/PSB: fit + zoom source, region and tile reads
   test-fixtures [dir]             write the small committed fixtures (default Tests/Fixtures)
   doc-types                       print CFBundleDocumentTypes (used by Scripts/bundle.sh)
   make-fixtures <dir> [--huge]    write test pictures (folder of JPEGs, 200 MP JPEG; --huge adds multi-GB PSB/TIFF)
@@ -90,22 +90,32 @@ func decodeCommand(_ paths: [String]) throws {
 func hugeCommand(_ args: [String]) throws {
     guard let path = args.first else { fail(usage) }
     let fit = args.firstIndex(of: "--fit").flatMap { Int(args[$0 + 1]) } ?? screenLongSide
+    let withImageIO = args.contains("--imageio")
     let url = URL(fileURLWithPath: path)
     print(url.lastPathComponent)
-    let source = try timed("own reader: open") { try PSBRegionSource(url: url) }
-    print("  \(source.meta.storedSize) (\(String(format: "%.0f", source.meta.storedSize.megapixels)) MP), "
-          + "\(source.isLargeDocument ? "PSB" : "PSD"), compression \(source.compression)")
-    for pass in ["first", "warm"] {
-        let (buffer, peak) = try measurePeak { try timed("own reader: fit \(fit) (\(pass))") { try source.fit(longSide: fit) } }
-        print("    → \(buffer.size), peak footprint \(MemoryFootprint.megabytes(peak))")
+    guard let base = timed("own reader: open", { SourceFactory.openOwnReader(url) }) else {
+        fail("  no own reader for this file (not a TIFF/PSB over 64 MP, or declined)")
     }
-    let center = PixelRect(x: source.fullSize.width / 2 - 1512, y: source.fullSize.height / 2 - 1000, width: 3024, height: 2000)
-    try timed("own reader: 100% region 3024×2000") { _ = try source.read(rect: center, level: 0) }
-    try timed("own reader: 512 tile at level 2") { _ = try source.read(rect: PixelRect(x: 0, y: 0, width: 2048, height: 2048), level: 2) }
-    for pass in ["first", "warm"] {
-        let (buffer, peak) = try measurePeak {
-            try timed("ImageIO: screen decode \(fit) (\(pass))") { try ImageIODecoder.screenDecode(url, screenLongSide: fit).0 }
+    let kind = base is TIFFRegionSource ? "TIFF, \((base as! TIFFRegionSource).levels.count) level(s)" : "PSD/PSB"
+    print("  \(base.fullSize) (\(String(format: "%.0f", base.fullSize.megapixels)) MP), \(kind)")
+    var source: RegionSource = base
+    for pass in ["first", "again"] {
+        let ((pixels, prepared), peak) = try measurePeak {
+            try timed("fit \(fit) + zoom source (\(pass))") { try SourceFactory.prepareHuge(base, fitLongSide: fit) }
         }
+        source = prepared
+        print("    → \(pixels.size), \(prepared is HybridSource ? "RAM level built" : "from overviews"), peak footprint \(MemoryFootprint.megabytes(peak))")
+    }
+    let full = source.fullSize
+    let center = PixelRect(x: full.width / 2 - 1512, y: full.height / 2 - 1000, width: 3024, height: 2000)
+    try timed("100% region 3024×2000") { _ = try source.read(rect: center, level: 0) }
+    let tile = PixelRect(x: full.width / 3, y: full.height / 3, width: 514, height: 514)
+    try timed("one 512 tile at 100%") { _ = try source.read(rect: tile, level: 0) }
+    try timed("one 512 tile at level 2") {
+        _ = try source.read(rect: PixelRect(x: tile.x, y: tile.y, width: 2056, height: 2056), level: 2)
+    }
+    if withImageIO {
+        let (buffer, peak) = try measurePeak { try timed("ImageIO screen decode \(fit)") { try ImageIODecoder.screenDecode(url, screenLongSide: fit).0 } }
         print("    → \(buffer.size), peak footprint \(MemoryFootprint.megabytes(peak))")
     }
 }

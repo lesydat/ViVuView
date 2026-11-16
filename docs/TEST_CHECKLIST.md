@@ -64,3 +64,13 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 7.3 | Zoom 400%+ | Hiện từng pixel vuông (nearest) | | |
 | 7.4 | Ảnh HEIC/PNG 15–60MP, nhấn 0 | Sau tối đa ~0,5s ảnh nét hẳn | | |
 | 7.5 | Activity Monitor khi xem ảnh 200MP | Bộ nhớ quanh 3GB lúc dựng, không tăng mãi khi pan | | |
+
+## M8 — Ảnh khổng lồ (TIFF/PSB)
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 8.1 | Mở ảnh vệ tinh/vũ trụ GeoTIFF/BigTIFF thật vài GB có overview | Có hình dưới 0,3s | | |
+| 8.2 | Mở TIFF/PSB vài GB không có overview | Có hình khoảng 1s; zoom 100% và pan mượt | | |
+| 8.3 | TIFF 16-bit / float (ảnh thiên văn) | Hiện rõ (kéo giãn); nhấn E chuyển tuyến tính ↔ kéo giãn, status bar ghi trạng thái | | |
+| 8.4 | GeoTIFF nén JPEG (YCbCr) | Màu đúng | | |
+| 8.5 | File TIFF/PSB hỏng hoặc bị cắt | Không crash; hoặc hiện được qua ImageIO, hoặc báo lỗi | | |

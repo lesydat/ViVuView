@@ -66,6 +66,11 @@ extension ViewerController {
         // picture (and its meta) is still shown.
         guard let url = currentURL, detail.url == url, nav.shownURL == url, let meta, let texture, !galleryOpen,
               !meta.isAnimated else { return }
+        if detail.source == nil, let own = nav.slots[url]?.source {
+            // Huge TIFF/PSB: the reader that made the fit picture zooms too (tier L-A).
+            detail.source = own
+            detail.tier = .region
+        }
         let tier = detail.tier ?? ImageTier.classify(meta.orientedSize, maxTextureSide: renderer.maxTextureSide)
         detail.tier = tier
         let needs = needsDetail
@@ -73,7 +78,7 @@ extension ViewerController {
         case .single:
             guard texture.coverage < 0.999, needs || dwelled, detail.fullTicket == nil else { return }
             startFullDecode(url)
-        case .ramPyramid, .subsampled:
+        case .ramPyramid, .subsampled, .region:
             if detail.source == nil {
                 if (needs || dwelled) && detail.sourceTicket == nil && !detail.buildFailed { buildSource(url, tier: tier) }
             } else if needs {
@@ -200,7 +205,33 @@ extension ViewerController {
         if case .subsampled(let factor) = detail.tier, detail.source != nil { return String(localized: "tối đa 1/\(factor)") }
         if detail.sourceTicket != nil { return String(localized: "đang nạp chi tiết…") }
         if detail.buildFailed { return String(localized: "không nạp được độ phân giải đầy đủ") }
+        if let tiff = tiffSource, tiff.stretchRange != nil {
+            return tiff.stretchEnabled ? String(localized: "kéo giãn") : String(localized: "tuyến tính")
+        }
         return nil
+    }
+
+    /// The TIFF reader behind the current image, if any.
+    var tiffSource: TIFFRegionSource? {
+        let source = detail.source ?? currentURL.flatMap { nav.slots[$0]?.source }
+        return (source as? TIFFRegionSource) ?? ((source as? HybridSource)?.base as? TIFFRegionSource)
+    }
+
+    /// Key E: contrast stretch on/off for 16-bit and float images; the picture is decoded again.
+    func toggleStretch() {
+        guard let tiff = tiffSource, tiff.stretchRange != nil, let url = currentURL else { NSSound.beep(); return }
+        tiff.stretchEnabled.toggle()
+        // Everything decoded with the old mapping goes; the reader keeps the new setting.
+        detail.reset()
+        detail.url = url
+        if let slot = nav.slots[url] {
+            slot.screen = nil
+            slot.thumb = nil
+            slot.source = nil
+        }
+        nav.shownURL = nil
+        refreshPreload()
+        updateStatus()
     }
 }
 

@@ -344,7 +344,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .moveToTrash: moveCurrentToTrash()
         case .toggleFilmstrip: toggleFilmstrip()
         case .toggleGallery: toggleGallery()
-        case .toggleInfo, .toggleStretch,
+        case .toggleStretch: toggleStretch()
+        case .toggleInfo,
              .previousFrame, .nextFrame, .togglePlayback:
             performLater(command)
         }

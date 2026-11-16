@@ -68,7 +68,19 @@ final class ScriptRunner {
             let url = URL(fileURLWithPath: path)
             if !FileManager.default.fileExists(atPath: url.path) {
                 try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try ImageWriter.write(ImageWriter.pattern(size: size, seed: 5), to: url, type: url.pathExtension == "png" ? .png : .jpeg)
+                switch url.pathExtension.lowercased() {
+                case "tif", "tiff":
+                    try TIFFWriter.write(to: url, width: size.width, height: size.height, bigTIFF: false, overviews: 0) { _, y, lw, rgb in
+                        FixtureContent.fillRow(y: y, x0: 0, count: lw, width: size.width, height: size.height, into: rgb)
+                    }
+                case "psb", "psd":
+                    try PSBWriter.write(to: url, width: size.width, height: size.height, large: url.pathExtension == "psb",
+                                        compression: .rle) { y, rgb in
+                        FixtureContent.fillRow(y: y, x0: 0, count: size.width, width: size.width, height: size.height, into: rgb)
+                    }
+                default:
+                    try ImageWriter.write(ImageWriter.pattern(size: size, seed: 5), to: url, type: url.pathExtension == "png" ? .png : .jpeg)
+                }
             }
         case .snapshotFilmstrip(let path):
             try await settle()

@@ -203,6 +203,14 @@ Lý do cần bộ đọc riêng: theo số đo công khai của FeatherView, Ima
 - Chuyển màu từ ICC nhúng sang P3 chạy theo dải trên mọi nhân.
 - **Dữ liệu không tin cậy:** mọi offset, độ dài, kích thước đọc từ file phải kiểm tra biên (không âm, không vượt kích thước file, phép cộng/nhân không tràn) trước khi dùng; PackBits giải ra quá hoặc thiếu so với chiều rộng hàng là lỗi. File cắt cụt hoặc hỏng thì ném lỗi (→ rơi về ImageIO), không bao giờ crash hay đọc ngoài vùng nhớ. Có test với file cắt cụt, bảng độ dài hàng sai, kích thước khai báo vô lý.
 
+**Đã làm ở M8 (khác/thêm so với thiết kế ban đầu):**
+- `BandedAreaMean`: đọc theo dải khối (một hàng tile, hoặc một dải strip) chạy song song; mỗi luồng giải từng khối rồi cộng thẳng vào các hàng đầu ra mà dải phủ, hàng nằm vắt giữa hai dải được gộp có khoá. Bộ nhớ chỉ khoảng một khối mỗi luồng cộng vài hàng đầu ra, kể cả với file vài GB.
+- Tầng RAM được dựng **trong cùng lượt** tạo ảnh vừa màn hình: đọc toàn ảnh một lần ra tầng ≤ 64MP (`HybridSource` = tầng RAM cho mức thu nhỏ ≥ hệ số của nó, file cho mức mịn hơn), rồi ảnh vừa màn hình lấy từ tầng đó. TIFF có overview đủ thô thì đọc thẳng từ overview, không dựng tầng RAM.
+- TIFF 8-bit RGB/xám không nén JPEG đọc byte thẳng (`TIFFReadEncodedTile/Strip`), bỏ qua giao diện RGBA của libtiff (nhanh hơn khoảng 2,5 lần ở file 2,2GB). Giao diện RGBA chỉ dùng cho palette, YCbCr/JPEG, CMYK, 1-bit.
+- Overview lấy từ IFD có `NewSubfileType` bit 0, SubIFD của ảnh chính, và file `.ovr` của GDAL. Thẻ Orientation của TIFF bị bỏ qua (coi như 1).
+- Lựa chọn kéo giãn (phím `E`) được nhớ cho mọi file mở sau đó trong phiên.
+- Thumbnail và ảnh vừa màn hình của TIFF/PSB > 64MP đều đi qua bộ đọc riêng; nếu bộ đọc từ chối hoặc lỗi thì rơi về ImageIO.
+
 **Giới hạn nói thẳng:** PNG/JPEG cực lớn không truy cập ngẫu nhiên được và ImageIO không có API đọc theo dòng, nên mỗi lần mở phải decode tuần tự cả file (có thể hàng chục giây, có vòng tiến độ), và vì không lưu cache ra đĩa nên lần sau vẫn vậy. JPEG2000 lớn, FITS, GDAL ngoài phạm vi; `RegionSource` cho phép thêm backend sau.
 
 ## 5. Chuyển ảnh cực nhanh

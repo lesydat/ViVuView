@@ -36,6 +36,11 @@ public final class ThumbnailStore: @unchecked Sendable {
     /// Decodes a 640 px thumbnail from the file and compresses it (JPEG q80, PNG when it has alpha).
     /// Returns the pixels too so the caller can upload them right away.
     public static func make(_ url: URL) throws -> (CompressedThumbnail, PixelBuffer) {
+        // Huge TIFF/PSB: ImageIO would take seconds and gigabytes; the own reader uses overviews or one pass.
+        if let own = SourceFactory.openOwnReader(url), let pixels = try? own.fit(longSide: longSide) {
+            let data = try encode(pixels, alpha: false)
+            return (CompressedThumbnail(data: data, size: pixels.size, imageSize: own.meta.orientedSize), pixels)
+        }
         let source = try ImageIODecoder.source(url)
         let meta = try ImageIODecoder.meta(source: source, url: url)
         let request = ImageIODecoder.decodeSize(longSide: meta.storedSize.longSide, target: longSide, uti: meta.uti)

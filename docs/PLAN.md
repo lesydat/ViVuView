@@ -101,6 +101,7 @@ Tài liệu được viết để một model nhỏ hơn (Opus 5.5) thực hiệ
 - Cảm giác cử chỉ và hiệu ứng LilyView dựa trên mô tả; cần người dùng thử ở M4.
 - Swift 6 strict concurrency + Metal + C interop là gánh nặng lớn nhất cho model nhỏ; TECH_SPEC mục 1 quy định sẵn mẫu đồng bộ.
 - Cần `brew install cmake` để chạy `build-libtiff.sh`.
+- Kết quả M8 (docs/BENCH.md): TIFF/PSB vài GB không có overview mở dưới 1s nhưng **chưa đạt** mục tiêu "≤ 300ms khi file đã trong page cache" (0,66–0,77s, giới hạn bởi việc đọc lại toàn bộ file); TIFF có overview đạt (21–58ms).
 - Kết quả M0.5 (docs/SPIKES.md): bộ đọc PSB riêng đạt < 1s nhưng chưa đạt mục tiêu ấm 300ms; HEIC decode chậm; hai bản thử (d) hiệu ứng toàn màn hình và (e) vùng nóng filmstrip dời sang đầu M4 và M5.
 
 **Giới hạn chấp nhận**
