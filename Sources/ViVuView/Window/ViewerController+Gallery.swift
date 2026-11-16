@@ -67,6 +67,7 @@ extension ViewerController {
         hideChrome()
         setVisible(statusBar, false, animated: false)
         showGalleryHeader(true)
+        defer { layoutInfoPanel() }
         if !isFullScreen {
             gallery.savedFrame = window.frame
             let full = (window.screen ?? NSScreen.main)?.visibleFrame ?? window.frame
@@ -119,6 +120,7 @@ extension ViewerController {
         clampViewport()
         metalView.renderNow(synchronously: true)
         updateStatusVisibility()
+        layoutInfoPanel()
     }
 
     // MARK: Animation

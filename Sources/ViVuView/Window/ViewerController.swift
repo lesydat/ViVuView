@@ -46,10 +46,13 @@ final class ViewerController: NSObject, NSWindowDelegate {
     let strip = FilmstripState()
     let gallery = GalleryState()
     let detail = DetailState(budgetMB: Settings.shared.tileMemoryMB)
+    let infoPanelState = InfoState()
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
     var fixedFrame = false
+    /// Sort order the folder was last scanned with.
+    var appliedSort = "\(Settings.shared.sortKey.rawValue)/\(Settings.shared.sortAscending)"
     private var lastFitKey: TimeInterval = 0
     private var resizingProgrammatically = false
 
@@ -100,6 +103,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     func show() {
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(content)
+        layoutInfoPanel()
     }
 
     // MARK: Opening
@@ -336,7 +340,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .revealInFinder:
             if let url = currentURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         case .escape:
-            if isFullScreen { window.toggleFullScreen(nil) } else { window.performClose(nil) }
+            if infoOpen { toggleInfo() } else if isFullScreen { window.toggleFullScreen(nil) } else { window.performClose(nil) }
         case .next: navigate(by: 1, animated: true)
         case .previous: navigate(by: -1, animated: true)
         case .first: go(to: 0, direction: 1)
@@ -345,7 +349,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .toggleFilmstrip: toggleFilmstrip()
         case .toggleGallery: toggleGallery()
         case .toggleStretch: toggleStretch()
-        case .toggleInfo,
+        case .toggleInfo: toggleInfo()
+        case
              .previousFrame, .nextFrame, .togglePlayback:
             performLater(command)
         }
@@ -389,6 +394,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         if let note = detailStatus { items.append(note) }
         if let lastError, meta == nil { items.append(lastError) }
         statusBar.update(items: items)
+        updateInfoModel()
     }
 
     /// "12/384".
@@ -408,6 +414,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
             _ = settings.filmstripThumb
             _ = settings.thumbnailMemoryMB
             _ = settings.tileMemoryMB
+            _ = settings.sortKey
+            _ = settings.sortAscending
         }, onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -418,6 +426,11 @@ final class ViewerController: NSObject, NSWindowDelegate {
     }
 
     func applySettings() {
+        let sort = "\(settings.sortKey.rawValue)/\(settings.sortAscending)"
+        if sort != appliedSort {
+            appliedSort = sort
+            rescanFolder()
+        }
         thumbs.setBudget(megabytes: settings.thumbnailMemoryMB)
         detail.tiles.setBudget(settings.tileMemoryMB << 20)
         if settings.filmstrip == .always { showFilmstrip() } else if !strip.pinned { hideFilmstrip() }
@@ -437,6 +450,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     func windowDidResize(_ notification: Notification) {
         layoutOverlays()
         galleryResized()
+        if infoOpen { layoutInfoPanel() }
         clampViewport()
         metalView.setNeedsRender()
     }
@@ -446,6 +460,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     }
 
     func windowDidEnterFullScreen(_ notification: Notification) {
+        layoutInfoPanel()
         clampViewport()
         hideChrome()
         updateStatus()
@@ -453,6 +468,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
+        layoutInfoPanel()
         resizeWindowToImage()
         updateStatus()
         metalView.setNeedsRender()
@@ -474,9 +490,16 @@ final class ViewerController: NSObject, NSWindowDelegate {
         var center = vp.viewPoint(CGPoint(x: Double(meta.orientedSize.width) / 2, y: Double(meta.orientedSize.height) / 2), view: viewSize)
         center.x += bounceOffset
         let nearest = vp.scale / max(texture.coverage, 0.0001) >= 4 && detail.source == nil
-        let base = Quad.placed(texture: texture.texture, center: center, size: size,
-                               rotation: Double(vp.quarterTurns) * .pi / 2 + fx.liveRotation, viewSize: viewSize, nearest: nearest)
-        return [base] + detailQuads(viewport: vp, viewSize: viewSize)
+        let rotation = Double(vp.quarterTurns) * .pi / 2 + fx.liveRotation
+        let base = Quad.placed(texture: texture.texture, center: center, size: size, rotation: rotation, viewSize: viewSize,
+                               nearest: nearest)
+        var quads: [Quad] = []
+        if settings.background == .checkerboard && meta.hasAlpha {
+            var checker = Quad.placed(texture: nil, center: center, size: size, rotation: rotation, viewSize: viewSize)
+            checker.checker = true
+            quads.append(checker)
+        }
+        return quads + [base] + detailQuads(viewport: vp, viewSize: viewSize)
     }
 
     // MARK: Script support
@@ -498,6 +521,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case "hover": mouseMoved()
         case "unhover": mouseExited()
         case "click": toggleStatusPin()
+        case let name where name.hasPrefix("settings"):
+            let tab = SettingsTab(rawValue: String(name.dropFirst("settings".count).drop { $0 == ":" })) ?? .general
+            (NSApp.delegate as? AppDelegate)?.showSettings(tab: tab)
         default:
             guard let command = Command(rawValue: name) else { throw ScriptError.message("unknown action \(name)") }
             perform(command)
@@ -510,7 +536,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
             + "status=\(statusBarShown) gallery=\(galleryOpen ? "open" : "closed") sel=\(gallery.selected + 1) "
-            + "detail=\(detailDescription) "
+            + "detail=\(detailDescription) info=\(infoOpen ? "open" : "closed") "
             + "filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
             + "error=\(lastError ?? "-")"
     }

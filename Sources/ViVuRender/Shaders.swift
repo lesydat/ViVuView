@@ -43,6 +43,11 @@ enum Shaders {
                                   texture2d<float> tex [[texture(0)]],
                                   sampler smooth [[sampler(0)]], sampler sharp [[sampler(1)]]) {
         float4 c = u.color;
+        if (u.flags & 4u) {
+            float2 cell = floor((in.local + u.sizePx * 0.5) / 16.0);
+            float g = fmod(cell.x + cell.y, 2.0) < 1.0 ? 0.42 : 0.30;
+            c = float4(g, g, g, 1.0);
+        }
         if (u.flags & 1u) {
             float4 t = (u.flags & 2u) ? tex.sample(sharp, in.uv) : tex.sample(smooth, in.uv);
             c = t * u.color;

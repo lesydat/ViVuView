@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var viewer: ViewerController?
     private var scriptRunner: ScriptRunner?
     private var benchRunner: BenchRunner?
+    private lazy var settingsWindow = SettingsWindowController(settings: Settings.shared)
     /// Files handed over before the window exists (Finder double-click at launch).
     private var pendingOpen: URL?
 
@@ -68,6 +69,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { viewer?.show() }
         return true
+    }
+
+    @objc func showSettings(_ sender: Any?) {
+        settingsWindow.show()
+    }
+
+    func showSettings(tab: SettingsTab) {
+        settingsWindow.show(tab: tab)
+    }
+
+    var settingsController: SettingsWindowController { settingsWindow }
+
+    @objc func showShortcuts(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Phím tắt")
+        alert.informativeText = MainMenu.shortcutsText
+        alert.runModal()
     }
 
     @objc func openDocument(_ sender: Any?) {

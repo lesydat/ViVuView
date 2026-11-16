@@ -82,6 +82,29 @@ final class ScriptRunner {
                     try ImageWriter.write(ImageWriter.pattern(size: size, seed: 5), to: url, type: url.pathExtension == "png" ? .png : .jpeg)
                 }
             }
+        case .snapshotWindow(let name, let path):
+            try await settle()
+            try await Task.sleep(for: .milliseconds(400))
+            let target: NSWindow?
+            switch name {
+            case "info": target = viewer.infoPanelState.window
+            case "settings": target = (NSApp.delegate as? AppDelegate)?.settingsController.window
+            default: throw ScriptError.message("unknown window \(name)")
+            }
+            guard let window = target, window.isVisible, let view = window.contentView,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+                throw ScriptError.message("\(name) window not shown")
+            }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            // Glass and blur do not render into bitmaps: put the picture on a dark backdrop.
+            let out = NSImage(size: view.bounds.size)
+            out.lockFocus()
+            NSColor(white: 0.14, alpha: 1).setFill()
+            view.bounds.fill()
+            rep.draw(in: view.bounds)
+            out.unlockFocus()
+            guard let cg = out.cgImage(forProposedRect: nil, context: nil, hints: nil) else { throw ScriptError.message("capture") }
+            try Self.write(cg, to: path)
         case .snapshotFilmstrip(let path):
             try await settle()
             try await Task.sleep(for: .milliseconds(300))
@@ -132,6 +155,7 @@ enum ScriptCommand: Equatable {
     case snapshotTransition(String)
     case snapshotFilmstrip(String)
     case makeFixture(String, PixelSize)
+    case snapshotWindow(String, String)
 }
 
 enum ScriptParser {
@@ -158,6 +182,10 @@ enum ScriptParser {
             case ("expect", let text?): command = .expect(text)
             case ("snapshot-transition", let path?): command = .snapshotTransition(path)
             case ("snapshot-filmstrip", let path?): command = .snapshotFilmstrip(path)
+            case ("snapshot-window", let rest?):
+                let parts = rest.split(separator: " ", maxSplits: 1).map(String.init)
+                guard parts.count == 2 else { throw ScriptError.badLine(index + 1, line) }
+                command = .snapshotWindow(parts[0], parts[1])
             case ("make-fixture", let rest?):
                 let parts = rest.split(separator: " ").map(String.init)
                 let dims = parts.last?.split(separator: "x").compactMap { Int($0) } ?? []

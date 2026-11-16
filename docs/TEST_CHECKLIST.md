@@ -74,3 +74,18 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 8.3 | TIFF 16-bit / float (ảnh thiên văn) | Hiện rõ (kéo giãn); nhấn E chuyển tuyến tính ↔ kéo giãn, status bar ghi trạng thái | | |
 | 8.4 | GeoTIFF nén JPEG (YCbCr) | Màu đúng | | |
 | 8.5 | File TIFF/PSB hỏng hoặc bị cắt | Không crash; hoặc hiện được qua ImageIO, hoặc báo lỗi | | |
+
+## M9 — Panel thông tin và Cài đặt
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 9.1 | Nhấn I | Panel 280pt gắn bên phải cửa sổ (hoặc bên trái khi hết chỗ), đi theo khi kéo/đổi cỡ cửa sổ; histogram, Chung, Máy ảnh, Vị trí (ảnh có GPS), Hiển thị | | |
+| 9.2 | Chuyển ảnh khi panel mở | Nội dung đổi ngay | | |
+| 9.3 | Chọn/copy một giá trị; click đường dẫn thư mục; click bản đồ | Copy được; mở Finder; mở Maps | | |
+| 9.4 | Panel khi fullscreen / gallery | Phủ lên mép phải | | |
+| 9.5 | Thoát app khi panel đang mở, mở lại | Panel vẫn mở | | |
+| 9.6 | ⌘, → từng tab; đổi từng tuỳ chọn | Có hiệu lực ngay, giữ sau khi mở lại app | | |
+| 9.7 | Chép `build/ViVuView.app` vào /Applications, mở từ đó, tab Định dạng: tích JPEG | Hệ thống có thể hỏi xác nhận; double-click .jpg trong Finder mở ViVuView | | |
+| 9.8 | Bỏ tích JPEG | Trả về app mặc định trước đó | | |
+| 9.9 | Nền "Ô caro", mở PNG trong suốt | Ô caro sau phần trong suốt | | |
+| 9.10 | Trợ giúp → Phím tắt | Bảng phím đúng UI_SPEC mục 6 | | |

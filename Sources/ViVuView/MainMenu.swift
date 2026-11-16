@@ -11,6 +11,8 @@ enum MainMenu {
         appMenu.addItem(withTitle: String(localized: "Giới thiệu ViVuView"),
                         action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: String(localized: "Cài đặt…"), action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
+        appMenu.addItem(.separator())
         appMenu.addItem(withTitle: String(localized: "Ẩn ViVuView"),
                         action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(.separator())
@@ -66,7 +68,29 @@ enum MainMenu {
         main.addItem(submenu: windowMenu, title: windowMenu.title)
         NSApplication.shared.windowsMenu = windowMenu
 
+        let helpMenu = NSMenu(title: String(localized: "Trợ giúp"))
+        helpMenu.addItem(withTitle: String(localized: "Phím tắt"), action: #selector(AppDelegate.showShortcuts(_:)), keyEquivalent: "/")
+        main.addItem(submenu: helpMenu, title: helpMenu.title)
+        NSApplication.shared.helpMenu = helpMenu
+
         return main
+    }
+}
+
+extension MainMenu {
+    /// The keyboard table of docs/UI_SPEC.md §6, shown from Help → Shortcuts.
+    static var shortcutsText: String {
+        [
+            "← → · Space ⇧Space · PageUp PageDown: " + String(localized: "ảnh trước / sau (giữ để lướt)"),
+            "Home / End: " + String(localized: "ảnh đầu / cuối"),
+            "↑ ↓ · + −: " + String(localized: "zoom (đang zoom thì mũi tên pan; ⌘← ⌘→ chuyển ảnh)"),
+            "0: 100%   \\: " + String(localized: "vừa cửa sổ (nhấn 2 lần: theo kích thước ảnh)"),
+            "[ ]: " + String(localized: "xoay trái / phải"),
+            "F: " + String(localized: "toàn màn hình") + "   T: Filmstrip   G / Enter: Gallery   I: " + String(localized: "thông tin"),
+            "E: " + String(localized: "kéo giãn tương phản (ảnh 16-bit)") + "   , .: " + String(localized: "khung trước / sau (ảnh động)"),
+            "⌘C · ⌘⇧C: " + String(localized: "copy ảnh · copy đường dẫn") + "   ⌘⇧R: " + String(localized: "hiện trong Finder"),
+            "⌘⌫: " + String(localized: "chuyển vào Thùng rác") + "   Esc: " + String(localized: "đóng panel / gallery / fullscreen / cửa sổ"),
+        ].joined(separator: "\n")
     }
 }
 

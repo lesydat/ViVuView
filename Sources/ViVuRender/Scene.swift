@@ -18,6 +18,8 @@ public struct Quad {
     public var borderColor: SIMD4<Float>
     /// Nearest-neighbour sampling (pixel-peeping at high zoom).
     public var nearest: Bool
+    /// Fill with a grey checkerboard (behind transparent images) instead of `color`.
+    public var checker = false
 
     public init(texture: MTLTexture?, transform: simd_float4x4, sizePx: SIMD2<Float>,
                 uv: (SIMD2<Float>, SIMD2<Float>, SIMD2<Float>, SIMD2<Float>) = Quad.fullUV,
@@ -90,7 +92,7 @@ struct QuadUniforms {
     var sizePx: SIMD2<Float>
     var cornerRadius: Float
     var borderWidth: Float
-    var flags: UInt32   // bit 0: textured, bit 1: nearest
+    var flags: UInt32   // bit 0: textured, bit 1: nearest, bit 2: checkerboard
     var pad0: UInt32 = 0
     var pad1: UInt32 = 0
     var pad2: UInt32 = 0
@@ -103,6 +105,6 @@ struct QuadUniforms {
         sizePx = q.sizePx
         cornerRadius = q.cornerRadius
         borderWidth = q.borderWidth
-        flags = (q.texture != nil ? 1 : 0) | (q.nearest ? 2 : 0)
+        flags = (q.texture != nil ? 1 : 0) | (q.nearest ? 2 : 0) | (q.checker ? 4 : 0)
     }
 }
