@@ -1,0 +1,4 @@
+# Smoke test: run after every milestone (see CLAUDE.md).
+wait 300
+snapshot build/smoke/empty.png
+quit
