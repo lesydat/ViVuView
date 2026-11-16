@@ -8,6 +8,7 @@ extension ViewerController {
     }
 
     func keyDown(_ event: NSEvent) -> Bool {
+        if galleryOpen { return galleryKeyDown(event) }
         guard let command = KeyBindings.command(for: event, context: keyContext) else { return false }
         // Holding a key browses without animation (docs/UI_SPEC.md §4).
         switch command {
@@ -25,6 +26,7 @@ extension ViewerController {
     }
 
     func mouseDown(_ event: NSEvent) {
+        if galleryOpen { return }
         mouseDownEvent = event
         dragged = false
         if event.clickCount == 2 {
@@ -34,7 +36,7 @@ extension ViewerController {
     }
 
     func mouseDragged(_ event: NSEvent) {
-        guard let down = mouseDownEvent else { return }
+        guard !galleryOpen, let down = mouseDownEvent else { return }
         if !dragged {
             let d = hypot(event.locationInWindow.x - down.locationInWindow.x, event.locationInWindow.y - down.locationInWindow.y)
             guard d > 3 else { return }
@@ -50,6 +52,7 @@ extension ViewerController {
     }
 
     func mouseUp(_ event: NSEvent) {
+        if galleryOpen { galleryMouseUp(event); return }
         defer { mouseDownEvent = nil }
         guard !dragged, event.clickCount == 1 else { return }
         // A single click pins the status bar, unless it turns out to be a double click.
@@ -70,6 +73,7 @@ extension ViewerController {
     }
 
     func scrollWheel(_ event: NSEvent) {
+        if galleryOpen { galleryScroll(event); return }
         if event.hasPreciseScrollingDeltas {
             // Trackpad: swipe to change image at fit, pan when zoomed (ViewerController+Transition.swift).
             if handleTrackpadScroll(event) { return }
@@ -86,6 +90,7 @@ extension ViewerController {
     }
 
     func magnify(_ event: NSEvent) {
+        if galleryOpen { galleryMagnify(event); return }
         pinchGesture(event)
     }
 
@@ -95,6 +100,7 @@ extension ViewerController {
     }
 
     func smartMagnify(_ event: NSEvent) {
+        if galleryOpen { return }
         toggleFitAndActualSize(at: viewPoint(event))
     }
 
@@ -102,7 +108,8 @@ extension ViewerController {
 
     var statusBarShown: Bool { !statusBar.isHidden && statusBar.alphaValue > 0 }
 
-    func mouseMoved() {
+    func mouseMoved(_ event: NSEvent? = nil) {
+        if galleryOpen { if let event { galleryMouseMoved(event) }; return }
         showChrome()
         chromeHideTask?.cancel()
         chromeHideTask = Task { @MainActor [weak self] in
@@ -200,7 +207,7 @@ final class ViewerContentView: NSView {
     override func mouseDown(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseDown(event) } }
     override func mouseDragged(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseDragged(event) } }
     override func mouseUp(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseUp(event) } }
-    override func mouseMoved(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseMoved() } }
+    override func mouseMoved(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseMoved(event) } }
     override func mouseEntered(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseMoved() } }
     override func mouseExited(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseExited() } }
     override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { controller?.scrollWheel(event) } }

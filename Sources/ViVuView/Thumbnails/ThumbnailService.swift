@@ -33,7 +33,13 @@ final class ThumbnailService {
 
     func texture(for url: URL) -> DecodedTexture? { textures.value(for: url) }
 
-    func aspect(for url: URL) -> Double? { sizes[url].map { Double($0.width) / Double(max(1, $0.height)) } }
+    /// Files whose header could not be read: laid out as known 3:2 cells so they never hold up the layout.
+    private(set) var unreadable: Set<URL> = []
+
+    func aspect(for url: URL) -> Double? {
+        if let size = sizes[url] { return Double(size.width) / Double(max(1, size.height)) }
+        return unreadable.contains(url) ? MasonryLayout.placeholderAspect : nil
+    }
 
     func noteSize(_ size: PixelSize, for url: URL) { sizes[url] = size }
 
@@ -90,9 +96,10 @@ final class ThumbnailService {
         sizeGeneration += 1
         let generation = sizeGeneration
         let known = sizes
-        var order = priority.filter { known[$0] == nil }
+        let skip = unreadable
+        var order = priority.filter { known[$0] == nil && !skip.contains($0) }
         let prioritySet = Set(order)
-        order += urls.filter { known[$0] == nil && !prioritySet.contains($0) }
+        order += urls.filter { known[$0] == nil && !skip.contains($0) && !prioritySet.contains($0) }
         readBatch(order[...], generation: generation)
     }
 
@@ -101,15 +108,17 @@ final class ThumbnailService {
         let batch = Array(remaining.prefix(64))
         let rest = remaining.dropFirst(64)
         sizeTicket = scheduler.submit(.thumbnails, priority: .low, work: { isCancelled in
-            var found: [(URL, PixelSize)] = []
+            var found: [(URL, PixelSize?)] = []
             for url in batch {
                 if isCancelled() { break }
-                if let meta = try? ImageIODecoder.meta(url) { found.append((url, meta.orientedSize)) }
+                found.append((url, (try? ImageIODecoder.meta(url))?.orientedSize))
             }
             return found
         }, completion: { [weak self] result in
             guard let self, generation == sizeGeneration, case .success(let found) = result else { return }
-            for (url, size) in found { sizes[url] = size }
+            for (url, size) in found {
+                if let size { sizes[url] = size } else { unreadable.insert(url) }
+            }
             onSizes.forEach { $0() }
             readBatch(rest, generation: generation)
         })

@@ -44,6 +44,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     /// Thumbnails (RAM only) for stage 0, the filmstrip and the gallery.
     let thumbs: ThumbnailService
     let strip = FilmstripState()
+    let gallery = GalleryState()
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
@@ -70,7 +71,14 @@ final class ViewerController: NSObject, NSWindowDelegate {
         zoomBadge = ZoomBadge(frame: NSRect(x: 0, y: 0, width: 72, height: 26))
         thumbs = ThumbnailService(renderer: renderer, scheduler: scheduler, budgetMB: Settings.shared.thumbnailMemoryMB)
         super.init()
-        thumbs.onThumbnail.append { [weak self] url in self?.thumbnailArrivedForNavigation(url) }
+        thumbs.onThumbnail.append { [weak self] url in
+            self?.thumbnailArrivedForNavigation(url)
+            if self?.galleryOpen == true { self?.metalView.setNeedsRender() }
+        }
+        thumbs.onSizes.append { [weak self] in
+            guard let self, galleryOpen else { return }
+            rebuildGalleryLayout(keepAnchor: gallery.hovered ?? gallery.selected)
+        }
         content.controller = self
         content.addFill(metalView)
         content.addFill(messageView)
@@ -286,6 +294,20 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Commands
 
     func perform(_ command: Command) {
+        if galleryOpen {
+            switch command {
+            case .next: selectCell(gallery.selected + 1)
+            case .previous: selectCell(gallery.selected - 1)
+            case .first: selectCell(0)
+            case .last: selectCell(nav.entries.count - 1)
+            case .toggleGallery, .escape: closeGallery(opening: gallery.openedFrom)
+            case .zoomIn: changeColumnWidth(by: 1.25)
+            case .zoomOut: changeColumnWidth(by: 0.8)
+            case .toggleFullScreen: window.toggleFullScreen(nil)
+            default: break
+            }
+            return
+        }
         let panStep = max(viewSize.width, viewSize.height) * 0.1
         switch command {
         case .zoomIn: zoomStep(in: true)
@@ -318,7 +340,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .last: go(to: nav.entries.count - 1, direction: -1)
         case .moveToTrash: moveCurrentToTrash()
         case .toggleFilmstrip: toggleFilmstrip()
-        case .toggleGallery, .toggleInfo, .toggleStretch,
+        case .toggleGallery: toggleGallery()
+        case .toggleInfo, .toggleStretch,
              .previousFrame, .nextFrame, .togglePlayback:
             performLater(command)
         }
@@ -406,6 +429,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     func windowDidResize(_ notification: Notification) {
         layoutOverlays()
+        galleryResized()
         clampViewport()
         metalView.setNeedsRender()
     }
@@ -434,6 +458,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Scene
 
     func scene(viewSize: CGSize) -> [Quad] {
+        if gallery.isOpen { return galleryScene(viewSize: viewSize) }
         if let transition = fx.transition, transition.inMainView { return transition.quads(viewSize: viewSize) }
         guard let texture, let meta else { return [] }
         var vp = viewport
@@ -450,6 +475,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     func performScriptKey(_ spec: String) throws {
         guard let (key, chars, mods) = KeyBindings.parse(spec) else { throw ScriptError.message("bad key \(spec)") }
+        if galleryOpen {
+            _ = galleryKey(key, characters: chars, modifiers: mods)
+            return
+        }
         guard let command = KeyBindings.command(key: key, characters: chars, modifiers: mods, context: keyContext) else {
             throw ScriptError.message("key \(spec) does nothing")
         }
@@ -472,7 +501,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
         return "image=\(currentURL?.lastPathComponent ?? "-") pos=\(positionText ?? "-") size=\(meta.map { "\($0.orientedSize)" } ?? "-") "
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
-            + "status=\(statusBarShown) filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
+            + "status=\(statusBarShown) gallery=\(galleryOpen ? "open" : "closed") sel=\(gallery.selected + 1) "
+            + "filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
             + "error=\(lastError ?? "-")"
     }
 

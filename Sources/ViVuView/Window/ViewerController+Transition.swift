@@ -357,8 +357,10 @@ extension ViewerController {
         zoom(to: effectiveViewport.scale * (1 + event.magnification), anchor: viewPoint(event), flash: true, allowBelowFit: true)
     }
 
-    /// Hook: pinch-in past fit opens the gallery (M6).
-    func pinchedBelowFit() {}
+    /// Pinch-in past fit opens the gallery.
+    func pinchedBelowFit() {
+        openGallery()
+    }
 
     /// Vertical swipe at fit shows (up) or hides (down) the filmstrip.
     func verticalSwipe(up: Bool) {

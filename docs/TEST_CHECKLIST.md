@@ -39,3 +39,18 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 5.10 | Fullscreen + T | Filmstrip phủ lên đáy ảnh | | |
 | 5.11 | Thư mục vài nghìn ảnh, cuộn nhanh dải | Mượt, ô xám rồi thumbnail hiện dần | | |
 | 5.12 | Hai màn hình | Filmstrip ở đáy màn hình đang chứa cửa sổ ảnh | | |
+
+## M6 — Gallery
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 6.1 | Nhấn G (hoặc Enter, hoặc pinch thu nhỏ quá mức vừa cửa sổ rồi thả) | Cửa sổ mở ra toàn vùng màn hình, ảnh đang xem bay về đúng ô của nó, các ô khác hiện dần | | |
+| 6.2 | Nhìn bố cục | Mọi cột cùng rộng, ô cao theo tỉ lệ ảnh, đáy các cột gần đều nhau | | |
+| 6.3 | Cuộn 2 ngón / lăn chuột | Cuộn mượt, thumbnail hiện dần, không nhảy ô | | |
+| 6.4 | ← → ↑ ↓, PageUp/PageDown, Home/End | Viền trắng di chuyển đúng; ↑↓ theo cột | | |
+| 6.5 | Gõ vài chữ đầu của tên file | Nhảy tới file đó | | |
+| 6.6 | Pinch hoặc ⌘+ / ⌘− hoặc nút −/+ | Cỡ cột đổi (120–480pt), ô đang chọn đứng yên | | |
+| 6.7 | Click một ô / Enter | Ô phóng to thành chế độ xem, cửa sổ thu về cỡ ảnh | | |
+| 6.8 | Esc hoặc G | Về lại ảnh lúc mở gallery | | |
+| 6.9 | Thư mục vài nghìn ảnh mới mở | Lưới hiện ngay; phần chưa biết cỡ là ô xám 3:2 rồi thành ô thật, ô đã xếp không đổi cột | | |
+| 6.10 | Gallery khi đang fullscreen | Giữ fullscreen, vào/ra có animation | | |
