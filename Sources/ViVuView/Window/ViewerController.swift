@@ -45,6 +45,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     let thumbs: ThumbnailService
     let strip = FilmstripState()
     let gallery = GalleryState()
+    let detail = DetailState(budgetMB: Settings.shared.tileMemoryMB)
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
@@ -283,8 +284,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
         viewportChanged()
     }
 
-    /// Hook for zoom-dependent work (full-resolution decode, tiles) added in later milestones.
-    func viewportChanged() {}
+    /// Zoom-dependent work: full-resolution decode and tiles (ViewerController+Detail.swift).
+    func viewportChanged() {
+        updateDetail()
+    }
 
     var zoomText: String {
         viewport.isFit ? String(localized: "Vừa") + " \(Format.percent(effectiveViewport.scale / unitScale * 100))"
@@ -382,6 +385,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
             if let camera = info.camera { items.append(camera) }
         }
         if isLoading { items.append(String(localized: "đang nạp…")) }
+        if let note = detailStatus { items.append(note) }
         if let lastError, meta == nil { items.append(lastError) }
         statusBar.update(items: items)
     }
@@ -402,6 +406,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
             _ = settings.filmstrip
             _ = settings.filmstripThumb
             _ = settings.thumbnailMemoryMB
+            _ = settings.tileMemoryMB
         }, onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -413,6 +418,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     func applySettings() {
         thumbs.setBudget(megabytes: settings.thumbnailMemoryMB)
+        detail.tiles.setBudget(settings.tileMemoryMB << 20)
         if settings.filmstrip == .always { showFilmstrip() } else if !strip.pinned { hideFilmstrip() }
         if filmstripVisible { showFilmstrip() }
         switch settings.background {
@@ -466,9 +472,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
         let size = CGSize(width: Double(meta.orientedSize.width) * vp.scale, height: Double(meta.orientedSize.height) * vp.scale)
         var center = vp.viewPoint(CGPoint(x: Double(meta.orientedSize.width) / 2, y: Double(meta.orientedSize.height) / 2), view: viewSize)
         center.x += bounceOffset
-        let nearest = vp.scale / max(texture.coverage, 0.0001) >= 4
-        return [Quad.placed(texture: texture.texture, center: center, size: size,
-                            rotation: Double(vp.quarterTurns) * .pi / 2 + fx.liveRotation, viewSize: viewSize, nearest: nearest)]
+        let nearest = vp.scale / max(texture.coverage, 0.0001) >= 4 && detail.source == nil
+        let base = Quad.placed(texture: texture.texture, center: center, size: size,
+                               rotation: Double(vp.quarterTurns) * .pi / 2 + fx.liveRotation, viewSize: viewSize, nearest: nearest)
+        return [base] + detailQuads(viewport: vp, viewSize: viewSize)
     }
 
     // MARK: Script support
@@ -502,8 +509,16 @@ final class ViewerController: NSObject, NSWindowDelegate {
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
             + "status=\(statusBarShown) gallery=\(galleryOpen ? "open" : "closed") sel=\(gallery.selected + 1) "
+            + "detail=\(detailDescription) "
             + "filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
             + "error=\(lastError ?? "-")"
+    }
+
+    var detailDescription: String {
+        if detail.source != nil { return "tiles(\(detail.tiles.count))" }
+        if detail.isBuilding { return "building" }
+        if let texture, texture.coverage >= 0.999 { return "full" }
+        return "screen"
     }
 
     /// The window content as an image: the Metal scene with the visible overlays drawn on top.

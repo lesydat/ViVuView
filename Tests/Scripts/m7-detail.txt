@@ -1,0 +1,22 @@
+# M7: full-resolution detail. A 72 MP picture is a RAM pyramid shown with tiles; a 20 MP one gets a
+# full-resolution texture when zoomed. Both are generated into build/ at run time.
+make-fixture build/fixtures/m7/huge-72mp.jpg 9800x7400
+make-fixture build/fixtures/m7b/mid-20mp.png 5200x3900
+open build/fixtures/m7/huge-72mp.jpg
+expect-loaded
+wait 3000
+expect detail=tiles(
+key 0
+wait 1500
+expect zoom=100%
+key right
+key down
+wait 1000
+snapshot build/smoke/m7-tiles.png
+print
+open build/fixtures/m7b/mid-20mp.png
+expect-loaded
+key 0
+wait 2500
+expect detail=full
+quit

@@ -105,6 +105,7 @@ Tài liệu được viết để một model nhỏ hơn (Opus 5.5) thực hiệ
 
 **Giới hạn chấp nhận**
 - **macOS 14–15 và máy Intel chưa kiểm chứng được trên máy phát triển** (macOS 27, Apple Silicon). Chỉ đảm bảo: biên dịch với kiểm tra availability, và lát x86_64 chạy qua Rosetta. Hành vi thật cần người dùng thử trên máy hoặc máy ảo tương ứng.
+- Ảnh tầng M (64MP tới khoảng 500MP) dựng pyramid qua ImageIO: RAM đỉnh khoảng 2,5 lần kích thước pyramid trong lúc dựng (200MP: 3,1GB, docs/BENCH.md M7), vì ImageIO giữ bản decode của nó song song với bản của app.
 - PNG/JPEG cực lớn (gigapixel) không truy cập ngẫu nhiên được: mỗi lần mở phải decode tuần tự (có thể hàng chục giây), có thể bị giới hạn độ phân giải theo RAM; vì không cache đĩa nên lần sau vẫn vậy.
 - Thư mục vài chục nghìn ảnh trên ổ mạng: bước đọc kích thước ảnh cho Gallery sẽ chậm, làm lại mỗi lần mở.
 - Một cửa sổ duy nhất. Màu 8-bit Display P3: không HDR; ảnh 16-bit kéo giãn mạnh có thể thấy dải màu.

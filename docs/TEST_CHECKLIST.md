@@ -54,3 +54,13 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 6.8 | Esc hoặc G | Về lại ảnh lúc mở gallery | | |
 | 6.9 | Thư mục vài nghìn ảnh mới mở | Lưới hiện ngay; phần chưa biết cỡ là ô xám 3:2 rồi thành ô thật, ô đã xếp không đổi cột | | |
 | 6.10 | Gallery khi đang fullscreen | Giữ fullscreen, vào/ra có animation | | |
+
+## M7 — Ảnh lớn
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 7.1 | Mở ảnh 100–300MP, chờ 1–3s, nhấn 0 | Ảnh hiện ngay bản mờ, sau đó 100% sắc nét; status bar ghi "đang nạp chi tiết…" trong lúc dựng | | |
+| 7.2 | Kéo/vuốt pan nhanh khắp ảnh ở 100% | Không có ô đen; vùng mới nét lại trong khoảng 0,1s; không thấy đường nối giữa các tile | | |
+| 7.3 | Zoom 400%+ | Hiện từng pixel vuông (nearest) | | |
+| 7.4 | Ảnh HEIC/PNG 15–60MP, nhấn 0 | Sau tối đa ~0,5s ảnh nét hẳn | | |
+| 7.5 | Activity Monitor khi xem ảnh 200MP | Bộ nhớ quanh 3GB lúc dựng, không tăng mãi khi pan | | |

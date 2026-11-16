@@ -176,6 +176,7 @@ extension ViewerController {
 
     func imageWillAppear(_ url: URL) {
         filmstripCurrentChanged()
+        detailImageChanged(url)
     }
 
     private func readInfo(_ url: URL) {
@@ -280,6 +281,7 @@ extension ViewerController {
             showError(error, url: slot.url)
         }
         finishLoad()
+        updateDetail()
         // Neighbours waited while a huge image decoded; let them go now.
         refreshPreload()
     }

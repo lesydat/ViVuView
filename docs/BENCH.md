@@ -20,3 +20,6 @@ Mỗi mốc ghi kết quả đo ở đây (TECH_SPEC mục 11.2). Mốc sau ch�
 | M5 | 2026-11-16 | như trên | M5 | Next/prev đã preload (A2) | 2,6–3,1ms | 10,6–11,6ms | 14,7ms | Có filmstrip/thumbnail nền |
 | M5 | 2026-11-16 | như trên | M5 | Liên tục, chờ sắc nét (B) | 10,8–13,8ms | 63–65ms | 72–89ms | Lần đầu đo được p50 15,5–17,7ms (vượt 20%) do thumbnail ±20 tranh CPU → tách hàng đợi thumbnail (2 luồng, QoS utility) và hoãn thumbnail điều hướng tới khi dừng duyệt 250ms |
 | M5 | 2026-11-16 | như trên | M5 | Giữ phím 30Hz (C) | 3,3ms | 6,8–7,1ms | 9,9ms | 120/120 ảnh hiện |
+| M7 | 2026-11-16 | như trên | M7 | JPEG 200MP: có hình / pyramid xong / 100% đủ tile / pan đủ tile | 629ms / 2,6s / 20ms / 79ms | — | — | RAM đỉnh 3,1GB (ImageIO giữ thêm một bản decode 0,8GB trong lúc dựng) |
+| M7 | 2026-11-16 | như trên | M7 | JPEG 72MP: có hình / pyramid xong / 100% đủ tile / pan | 302ms / 758ms / 22ms / 9ms | — | — | RAM đỉnh 1,3GB |
+| M7 | 2026-11-16 | như trên | M7 | Next/prev đã preload (A2) / liên tục (B) / giữ phím (C) | 2,8 / 9,8 / 3,2ms | 10,8 / 63,3 / 7,1ms | 16,1 / 114 / 8,8ms | Không chậm hơn M5 |

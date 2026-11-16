@@ -34,7 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if arguments.contains(where: { $0.hasPrefix("--bench-") }) {
             let bench = BenchRunner(viewer: viewer)
             benchRunner = bench
-            if let file = Self.value(after: "--bench-open", in: arguments) ?? Self.value(after: "--bench-idle", in: arguments) {
+            if let file = Self.value(after: "--bench-open", in: arguments) ?? Self.value(after: "--bench-idle", in: arguments)
+                ?? Self.value(after: "--bench-zoom", in: arguments) {
                 viewer.open(URL(fileURLWithPath: file))
             }
             viewer.show()

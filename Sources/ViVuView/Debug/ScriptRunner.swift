@@ -1,4 +1,5 @@
 import AppKit
+import ViVuCore
 
 /// Runs a UI script given with `--script <file>` (docs/TECH_SPEC.md §11.3).
 /// One command per line; blank lines and lines starting with `#` are ignored; paths may be relative
@@ -62,6 +63,13 @@ final class ScriptRunner {
         case .setting(let key, let value):
             try viewer.settings.set(key, value)
             try await Task.sleep(for: .milliseconds(30))
+        case .makeFixture(let path, let size):
+            // Large pictures are generated at run time instead of being committed.
+            let url = URL(fileURLWithPath: path)
+            if !FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try ImageWriter.write(ImageWriter.pattern(size: size, seed: 5), to: url, type: url.pathExtension == "png" ? .png : .jpeg)
+            }
         case .snapshotFilmstrip(let path):
             try await settle()
             try await Task.sleep(for: .milliseconds(300))
@@ -111,6 +119,7 @@ enum ScriptCommand: Equatable {
     case setting(String, String)
     case snapshotTransition(String)
     case snapshotFilmstrip(String)
+    case makeFixture(String, PixelSize)
 }
 
 enum ScriptParser {
@@ -137,6 +146,11 @@ enum ScriptParser {
             case ("expect", let text?): command = .expect(text)
             case ("snapshot-transition", let path?): command = .snapshotTransition(path)
             case ("snapshot-filmstrip", let path?): command = .snapshotFilmstrip(path)
+            case ("make-fixture", let rest?):
+                let parts = rest.split(separator: " ").map(String.init)
+                let dims = parts.last?.split(separator: "x").compactMap { Int($0) } ?? []
+                guard parts.count == 2, dims.count == 2 else { throw ScriptError.badLine(index + 1, line) }
+                command = .makeFixture(parts[0], PixelSize(width: dims[0], height: dims[1]))
             case ("setting", let rest?):
                 let kv = rest.split(separator: " ", maxSplits: 1).map(String.init)
                 guard kv.count == 2 else { throw ScriptError.badLine(index + 1, line) }

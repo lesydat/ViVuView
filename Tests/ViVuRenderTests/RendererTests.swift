@@ -64,3 +64,43 @@ let hasMetal = MTLCreateSystemDefaultDevice() != nil
         #expect(close(out.pixel(x: 5, y: 5), (128, 128, 128), tolerance: 2))
     }
 }
+
+@Suite(.enabled(if: hasMetal, "needs a Metal device")) struct TileRenderTests {
+    let renderer = try! Renderer()
+
+    /// An image drawn from 512 tiles (with their 1-pixel borders) must match the same image drawn as one
+    /// texture: no gaps, no seams, no one-pixel shifts at tile edges.
+    @Test(arguments: [(1.0, 0), (0.5, 1), (1.7, 0), (1.0, 1)])
+    func tilesMatchASingleTexture(scale: Double, turns: Int) throws {
+        let image = ImageWriter.pattern(size: PixelSize(width: 1500, height: 1100), seed: 9)
+        let source = try RAMPyramidSource(pixels: image, meta: ImageMeta(storedSize: image.size, uti: "public.png"),
+                                          smallestLongSide: 256)
+        let view = CGSize(width: 900, height: 700)
+        let vp = Viewport(scale: scale, center: CGPoint(x: 760, y: 530), quarterTurns: turns)
+        let level = TilePlanner.level(scale: scale, maxLevel: source.maxLevel)
+        let visible = TilePlanner.visibleRect(viewport: vp, view: view, imageSize: image.size)
+        var tiles: [(TileKey, TileTexture)] = []
+        for key in TilePlanner.tiles(level: level, visible: visible, imageSize: image.size, center: .zero) {
+            let (read, uv) = TilePlanner.paddedRead(of: key, imageSize: image.size)
+            let pixels = try source.read(rect: read, level: level)
+            tiles.append((key, TileTexture(texture: try renderer.makeTexture(pixels, mipmapped: false), uv: uv)))
+        }
+        let tiled = try renderer.renderOffscreen(TileLayer.quads(tiles, imageSize: image.size, viewport: vp, viewSize: view),
+                                                 size: PixelSize(width: 900, height: 700))
+        // Reference: the level picture as one texture.
+        let whole = try source.read(rect: PixelRect(size: image.size), level: level)
+        let single = Quad.placed(texture: try renderer.makeTexture(whole, mipmapped: false),
+                                 center: vp.viewPoint(CGPoint(x: 750, y: 550), view: view),
+                                 size: CGSize(width: 1500 * scale, height: 1100 * scale),
+                                 rotation: Double(turns) * .pi / 2, viewSize: view)
+        let reference = try renderer.renderOffscreen([single], size: PixelSize(width: 900, height: 700))
+        var worst = 0
+        for y in stride(from: 2, to: 698, by: 3) {
+            for x in stride(from: 2, to: 898, by: 3) {
+                let a = tiled.pixel(x: x, y: y), b = reference.pixel(x: x, y: y)
+                worst = max(worst, abs(Int(a.r) - Int(b.r)), abs(Int(a.g) - Int(b.g)), abs(Int(a.b) - Int(b.b)))
+            }
+        }
+        #expect(worst <= 8, "largest channel difference \(worst)")
+    }
+}

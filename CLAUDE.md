@@ -10,7 +10,7 @@ Trình xem ảnh cực nhanh cho macOS (Swift + AppKit + Metal), phong cách Lil
 
 Ba tài liệu này là nguồn thiết kế duy nhất. Cần lệch khỏi tài liệu thì sửa tài liệu trong cùng commit và nêu lý do.
 
-**Mốc hiện tại:** M6 xong. Tiếp theo: M7.
+**Mốc hiện tại:** M7 xong. Tiếp theo: M8.
 
 Dữ liệu thử: `swift run -c release vivu-bench make-fixtures <thư mục ngoài repo> [--huge]`.
 
@@ -24,7 +24,7 @@ build/ViVuView.app/Contents/MacOS/ViVuView --script Tests/Scripts/smoke.txt     
 arch -x86_64 build/ViVuView.app/Contents/MacOS/ViVuView --script Tests/Scripts/smoke.txt  # lát Intel qua Rosetta
 swift run vivu-bench <lệnh>      # đo decode không cần cửa sổ
 build/ViVuView.app/Contents/MacOS/ViVuView --bench-navigate <thư mục> [--count N]   # đo chuyển ảnh trong app thật
-build/ViVuView.app/Contents/MacOS/ViVuView --bench-open <file> | --bench-idle <file>
+build/ViVuView.app/Contents/MacOS/ViVuView --bench-open <file> | --bench-idle <file> | --bench-zoom <ảnh lớn>
 ```
 
 Mỗi mốc phải qua `Scripts/check.sh` (test + bundle universal + mọi kịch bản trong `Tests/Scripts/` trên cả arm64 và x86_64 qua Rosetta); xem lại ảnh snapshot trong `build/smoke/`; ghi số đo vào `docs/BENCH.md`.

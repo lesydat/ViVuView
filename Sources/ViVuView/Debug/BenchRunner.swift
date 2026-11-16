@@ -83,6 +83,8 @@ final class BenchRunner {
             await navigate(folder: URL(fileURLWithPath: folder), count: count)
         } else if let file = AppDelegate.value(after: "--bench-open", in: arguments) {
             await openTiming(URL(fileURLWithPath: file))
+        } else if let file = AppDelegate.value(after: "--bench-zoom", in: arguments) {
+            await zoomTiming(URL(fileURLWithPath: file))
         } else if let file = AppDelegate.value(after: "--bench-idle", in: arguments) {
             await idle(URL(fileURLWithPath: file))
         }
@@ -183,6 +185,36 @@ final class BenchRunner {
         func ms(_ t: CFTimeInterval?) -> String { t.map { String(format: "%.0f ms", ($0 - base) * 1000) } ?? "timeout" }
         print("bench-open: \(url.lastPathComponent) first frame \(ms(first)), sharp \(ms(sharp)) after process start; "
               + "footprint \(MemoryFootprint.megabytes(MemoryFootprint.current()))")
+    }
+
+    /// Large image: time until full-resolution detail is ready, then until a 100% view is fully tiled,
+    /// then after a pan. Peak footprint over the whole run.
+    private func zoomTiming(_ url: URL) async {
+        let t0 = CACurrentMediaTime()
+        var peak = MemoryFootprint.current()
+        func sample() { peak = max(peak, MemoryFootprint.current()) }
+        await viewer.waitForLoad()
+        let shown = CACurrentMediaTime()
+        while viewer.detail.source == nil && viewer.detail.tier != .single && CACurrentMediaTime() - t0 < 60 {
+            sample()
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        let ready = CACurrentMediaTime()
+        func tilesDone() -> Bool { viewer.detail.pending.isEmpty }
+        viewer.perform(.actualSize)
+        let z0 = CACurrentMediaTime()
+        try? await Task.sleep(for: .milliseconds(20))
+        while !tilesDone() && CACurrentMediaTime() - z0 < 20 { sample(); try? await Task.sleep(for: .milliseconds(2)) }
+        let zoomed = CACurrentMediaTime()
+        viewer.pan(by: CGVector(dx: -viewer.viewSize.width * 0.8, dy: -viewer.viewSize.height * 0.5))
+        let p0 = CACurrentMediaTime()
+        try? await Task.sleep(for: .milliseconds(5))
+        while !tilesDone() && CACurrentMediaTime() - p0 < 20 { sample(); try? await Task.sleep(for: .milliseconds(2)) }
+        let panned = CACurrentMediaTime()
+        sample()
+        print(String(format: "bench-zoom: %@ first picture %.0f ms, detail ready %.0f ms, 100%% tiled %.0f ms, pan tiled %.0f ms, %d tiles, peak footprint %@",
+                     url.lastPathComponent, (shown - t0) * 1000, (ready - t0) * 1000, (zoomed - z0) * 1000, (panned - p0) * 1000,
+                     viewer.detail.tiles.count, MemoryFootprint.megabytes(peak)))
     }
 
     private func idle(_ url: URL) async {
