@@ -4,8 +4,14 @@ expect-loaded
 expect window=640x400
 expect zoom=Vừa 100%
 key +
-expect zoom=Vừa 125%
+expect zoom=125%
 expect window=800x500
+key right
+expect image=zz-animated.gif
+key left
+expect image=pattern.png
+key +
+key 0
 key 0
 expect zoom=Vừa 100%
 key backslash

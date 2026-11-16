@@ -54,3 +54,20 @@ import UniformTypeIdentifiers
         #expect(FormatCatalog.documentTypesPlistXML().contains("public.jpeg"))
     }
 }
+
+@Suite struct AnimatedTests {
+    @Test func gifFramesAndDelays() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("vivu-anim-\(UUID().uuidString).gif")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try TestFixtures.animatedGIF(to: url, delays: [0.05, 0.5, 0.0])
+        let meta = try ImageIODecoder.meta(url)
+        #expect(meta.frameCount == 3 && meta.isAnimated)
+        let delays = try AnimatedDecoder.durations(url)
+        #expect(delays.count == 3)
+        #expect(abs(delays[0] - 0.05) < 0.005 && abs(delays[1] - 0.5) < 0.005)
+        #expect(delays[2] == AnimatedDecoder.fallbackDelay)            // zero delay → 100 ms like browsers
+        let first = try AnimatedDecoder.frame(url, index: 0, maxPixel: 200)
+        let second = try AnimatedDecoder.frame(url, index: 1, maxPixel: 200)
+        #expect(first.pixel(x: 10, y: 10).r > 180 && second.pixel(x: 10, y: 10).g > 160)
+    }
+}

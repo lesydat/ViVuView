@@ -27,6 +27,8 @@ echo "==> assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
+# Vietnamese and English strings (String Catalog → .lproj), docs/TECH_SPEC.md §1.
+xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources"
 mkdir -p "$APP/Contents/Resources/Licenses"
 cp Vendor/licenses/*.txt "$APP/Contents/Resources/Licenses/"
 
@@ -36,6 +38,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>vi</string>
+    <key>CFBundleLocalizations</key><array><string>vi</string><string>en</string></array>
     <key>CFBundleExecutable</key><string>$APP_NAME</string>
     <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>

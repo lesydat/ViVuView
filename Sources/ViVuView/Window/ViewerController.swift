@@ -47,6 +47,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
     let gallery = GalleryState()
     let detail = DetailState(budgetMB: Settings.shared.tileMemoryMB)
     let infoPanelState = InfoState()
+    let animation = AnimationState()
+    private var memoryWatcher: MemoryPressureWatcher?
+    var memoryLevel: MemoryPressureWatcher.Level { memoryWatcher?.level ?? .normal }
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
@@ -98,6 +101,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         messageView.message = String(localized: "Kéo ảnh vào đây hoặc nhấn ⌘O")
         metalView.sceneProvider = { [weak self] size in self?.scene(viewSize: size) ?? [] }
         observeSettings()
+        memoryWatcher = MemoryPressureWatcher { [weak self] level in self?.memoryPressureChanged(level) }
     }
 
     func show() {
@@ -123,10 +127,12 @@ final class ViewerController: NSObject, NSWindowDelegate {
         guard isNewImage else {
             // A sharper stage of the same image: keep the viewport, just redraw.
             metalView.setNeedsRender()
+            animationImageShown()
             return
         }
+        defer { animationImageShown() }
         let keep = settings.keepZoom && !viewport.isFit
-        if !keep { viewport = Viewport.fit(image: decoded.meta.orientedSize, view: viewSize) }
+        if !keep { viewport = fitted(decoded.meta.orientedSize, view: viewSize, turns: 0) }
         if settings.openSize == .always100 {
             viewport = Viewport(scale: unitScale, center: CGPoint(x: Double(decoded.meta.orientedSize.width) / 2,
                                                                   y: Double(decoded.meta.orientedSize.height) / 2))
@@ -147,7 +153,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         let image = Viewport.rotatedSize(meta.orientedSize, quarterTurns: viewport.quarterTurns)
         let f = min(availableFrame.width / image.width, availableFrame.height / image.height) / pointsPerPixel
         resizeWindowToImage(zoom: f)
-        viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+        viewport = fitted(meta.orientedSize, view: viewSize, turns: viewport.quarterTurns)
     }
 
     func showError(_ error: String, url: URL) {
@@ -184,16 +190,29 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     var fitScale: Double {
         guard let meta else { return 1 }
-        return Viewport.fitScale(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+        return fitted(meta.orientedSize, view: viewSize, turns: viewport.quarterTurns).scale
+    }
+
+    /// Fit viewport. Unless "Luôn vừa màn hình" is chosen, small images are not enlarged past 100%
+    /// (the window may be larger than the image because of its minimum size or full screen).
+    func fitted(_ image: PixelSize, view: CGSize, turns: Int) -> Viewport {
+        var vp = Viewport.fit(image: image, view: view, quarterTurns: turns)
+        if settings.openSize != .alwaysFit { vp.scale = min(vp.scale, unitScale) }
+        return vp
     }
 
     /// Viewport with fit resolved for the current view size.
     var effectiveViewport: Viewport {
         guard let meta, viewport.isFit else { return viewport }
-        return Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+        return fitted(meta.orientedSize, view: viewSize, turns: viewport.quarterTurns)
     }
 
-    var isZoomed: Bool { !viewport.isFit && abs(viewport.scale - fitScale) > fitScale * 0.001 }
+    /// The picture is larger than the view, so there is something to pan (arrows pan instead of changing image).
+    var isZoomed: Bool {
+        guard let meta, !viewport.isFit else { return false }
+        let shown = Viewport.rotatedSize(meta.orientedSize, quarterTurns: viewport.quarterTurns)
+        return shown.width * viewport.scale > viewSize.width + 1 || shown.height * viewport.scale > viewSize.height + 1
+    }
 
     /// Available screen area for the window, in points.
     var availableFrame: CGRect {
@@ -224,7 +243,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     func clampViewport() {
         guard let meta else { return }
         if viewport.isFit {
-            viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+            viewport = fitted(meta.orientedSize, view: viewSize, turns: viewport.quarterTurns)
         } else {
             viewport = viewport.clamped(image: meta.orientedSize, view: viewSize)
         }
@@ -242,7 +261,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         let shrinkingBelowFit = allowBelowFit && target < fitScale
         if !isFullScreen && !fixedFrame && !shrinkingBelowFit { resizeWindowToImage(zoom: target / unitScale) }
         if abs(target - fitScale) < fitScale * 0.001 {
-            viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+            viewport = fitted(meta.orientedSize, view: viewSize, turns: viewport.quarterTurns)
         }
         clampViewport()
         metalView.setNeedsRender()
@@ -262,7 +281,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         let now = ProcessInfo.processInfo.systemUptime
         if now - lastFitKey < 0.6 { fixedFrame = false }   // `\` twice: follow the image size again
         lastFitKey = now
-        viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
+        viewport = fitted(meta.orientedSize, view: viewSize, turns: viewport.quarterTurns)
         resizeWindowToImage()
         metalView.setNeedsRender()
         updateStatus()
@@ -281,7 +300,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
     func rotate(clockwise: Bool) {
         guard let meta else { return }
         let turns = viewport.quarterTurns + (clockwise ? 1 : 3)
-        viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: turns)
+        viewport = fitted(meta.orientedSize, view: viewSize, turns: turns)
         resizeWindowToImage()
         clampViewport()
         metalView.setNeedsRender()
@@ -349,16 +368,11 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .toggleFilmstrip: toggleFilmstrip()
         case .toggleGallery: toggleGallery()
         case .toggleStretch: toggleStretch()
+        case .togglePlayback: toggleAnimationPlayback()
+        case .previousFrame: stepAnimation(by: -1)
+        case .nextFrame: stepAnimation(by: 1)
         case .toggleInfo: toggleInfo()
-        case
-             .previousFrame, .nextFrame, .togglePlayback:
-            performLater(command)
         }
-    }
-
-    /// Commands whose features arrive in later milestones.
-    func performLater(_ command: Command) {
-        NSSound.beep()
     }
 
     private func copyImage() {
@@ -392,6 +406,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         }
         if isLoading { items.append(String(localized: "đang nạp…")) }
         if let note = detailStatus { items.append(note) }
+        if let frames = animationStatus { items.append(frames) }
         if let lastError, meta == nil { items.append(lastError) }
         statusBar.update(items: items)
         updateInfoModel()
@@ -485,7 +500,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         if let transition = fx.transition, transition.inMainView { return transition.quads(viewSize: viewSize) }
         guard let texture, let meta else { return [] }
         var vp = viewport
-        if vp.isFit { vp = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: vp.quarterTurns) }
+        if vp.isFit { vp = fitted(meta.orientedSize, view: viewSize, turns: vp.quarterTurns) }
         let size = CGSize(width: Double(meta.orientedSize.width) * vp.scale, height: Double(meta.orientedSize.height) * vp.scale)
         var center = vp.viewPoint(CGPoint(x: Double(meta.orientedSize.width) / 2, y: Double(meta.orientedSize.height) / 2), view: viewSize)
         center.x += bounceOffset
@@ -536,7 +551,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
             + "status=\(statusBarShown) gallery=\(galleryOpen ? "open" : "closed") sel=\(gallery.selected + 1) "
-            + "detail=\(detailDescription) info=\(infoOpen ? "open" : "closed") "
+            + "detail=\(detailDescription) anim=\(animationStatus ?? "-") info=\(infoOpen ? "open" : "closed") "
             + "filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
             + "error=\(lastError ?? "-")"
     }

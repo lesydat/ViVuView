@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import ViVuCore
 import ViVuRender
 
@@ -76,7 +77,11 @@ extension ViewerController {
         let needs = needsDetail
         switch tier {
         case .single:
-            guard texture.coverage < 0.999, needs || dwelled, detail.fullTicket == nil else { return }
+            // RAW shown from its embedded preview is only developed when zooming past the preview: developing
+            // just because the user paused would change the colours under them (docs/TECH_SPEC.md §4.2).
+            let isRaw = UTType(meta.uti)?.conforms(to: .rawImage) == true
+            let trigger = isRaw && settings.rawMode == .embeddedPreview ? needs : (needs || dwelled)
+            guard texture.coverage < 0.999, trigger, detail.fullTicket == nil else { return }
             startFullDecode(url)
         case .ramPyramid, .subsampled, .region:
             if detail.source == nil {

@@ -64,7 +64,7 @@ docs/, CLAUDE.md
   - App không mang dylib ngoài; không cần chép hay ký thư viện. Kiểm tra: `otool -L` trên file thực thi chỉ liệt kê thư viện hệ thống.
   - Homebrew chỉ cần cho `cmake` lúc build. Ghi chú bản quyền của ba thư viện đặt ở `Resources/Licenses/` và hiện trong mục Giấy phép của app.
 - `Scripts/bundle.sh`: `swift build -c release --arch arm64 --arch x86_64` → `build/ViVuView.app/Contents/{MacOS,Resources,Info.plist}` → `codesign --force -s -` → kiểm tra `lipo -archs` đủ hai kiến trúc. `Info.plist` sinh từ `FormatCatalog` (mục 9.1), có `NSHighResolutionCapable`, `LSMinimumSystemVersion 14.0`. Bundle id tạm: `app.vivuview.ViVuView`.
-- Chuỗi giao diện dùng String Catalog (`Localizable.xcstrings`), có tiếng Việt và tiếng Anh.
+- Chuỗi giao diện dùng String Catalog (`Resources/Localizable.xcstrings`), nguồn tiếng Việt, có bản tiếng Anh. `Scripts/strings.sh` cho trình biên dịch trích các `String(localized:)` (`-emit-localized-strings`) rồi `xcstringstool sync` gộp vào catalog; `bundle.sh` dùng `xcstringstool compile` tạo `en.lproj` trong app (tiếng Việt là ngôn ngữ phát triển, dùng chính khoá).
 - Khởi động bằng `main.swift` + `AppDelegate`, không storyboard/xib. Nhận file qua `application(_:open:)`, tham số dòng lệnh, kéo-thả, ⌘O.
 
 ## 2. Mô hình dữ liệu
@@ -299,7 +299,9 @@ Hành vi nhìn thấy mô tả ở UI_SPEC mục 4. Cách làm:
 - File hỏng/không đọc được: ô báo lỗi với tên file, vẫn next/prev bình thường.
 - File bị xoá/đổi tên khi đang xem: `FolderIndex` cập nhật, sang ảnh kế.
 - Ổ mạng/ổ chậm: mọi I/O ở hàng nền.
-- Ảnh động (`AnimatedDecoder`): decode từng khung theo yêu cầu, bộ đệm vòng 8 khung, phát bằng display link; không giải nén toàn bộ vào RAM.
+- Ảnh động (`AnimatedDecoder`): thời lượng khung đọc từ từ điển định dạng ({GIF}, {PNG}, {WebP}, {HEICS}…; ≤ 10ms coi là 100ms như trình duyệt), decode từng khung theo yêu cầu, giữ tối đa 8 khung phía trước, phát bằng Timer; không giải nén toàn bộ vào RAM. Space dừng/phát, `,` `.` lùi/tiến khung.
+- Áp lực bộ nhớ (`MemoryPressureWatcher`): warning → ngân sách tile và thumbnail giảm một nửa, chỉ nạp trước 1 ảnh mỗi phía, bỏ các ảnh xa; critical → chỉ giữ ảnh hiện tại.
+- Ảnh nhỏ hơn cửa sổ (do cỡ tối thiểu 320×240 hoặc fullscreen) không bị phóng quá 100%, trừ khi chọn "Luôn vừa màn hình". "Đang zoom" (mũi tên pan thay vì chuyển ảnh) nghĩa là ảnh lớn hơn khung nhìn.
 
 ## 11. Kiểm chứng
 

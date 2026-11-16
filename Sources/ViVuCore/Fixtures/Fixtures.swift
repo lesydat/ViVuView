@@ -306,6 +306,27 @@ public enum TestFixtures {
         return buffer
     }
 
+    /// Animated GIF of `frames` solid-colour frames (red, green, blue, …) with the given delays.
+    public static func animatedGIF(to url: URL, delays: [Double], size: PixelSize = PixelSize(width: 120, height: 80)) throws {
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, delays.count, nil) else {
+            throw DecodeError.unsupported
+        }
+        CGImageDestinationSetProperties(dest, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary)
+        let colours: [(UInt8, UInt8, UInt8)] = [(220, 30, 30), (30, 200, 30), (30, 30, 220), (230, 230, 230)]
+        for (i, delay) in delays.enumerated() {
+            let frame = PixelBuffer(width: size.width, height: size.height)
+            let (r, g, b) = colours[i % colours.count]
+            for y in 0..<size.height {
+                let row = frame.data.advanced(by: y * frame.bytesPerRow).assumingMemoryBound(to: UInt8.self)
+                for x in 0..<size.width { row[x * 4] = b; row[x * 4 + 1] = g; row[x * 4 + 2] = r; row[x * 4 + 3] = 255 }
+            }
+            guard let image = frame.makeImage() else { throw DecodeError.unsupported }
+            CGImageDestinationAddImage(dest, image, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: delay,
+                                                                                      kCGImagePropertyGIFUnclampedDelayTime: delay]] as CFDictionary)
+        }
+        guard CGImageDestinationFinalize(dest) else { throw DecodeError.corrupt("ghi GIF thất bại") }
+    }
+
     public static func write(to dir: URL) throws {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let pattern = orientationPattern()
@@ -314,6 +335,7 @@ public enum TestFixtures {
                                   quality: 0.95, orientation: o)
         }
         try Data("this is not an image".utf8).write(to: dir.appendingPathComponent("not-an-image.jpg"))
+        try animatedGIF(to: dir.appendingPathComponent("zz-animated.gif"), delays: [0.2, 0.2, 0.2, 0.2])
         let small = ImageWriter.pattern(size: PixelSize(width: 640, height: 400), seed: 3)
         try ImageWriter.write(small, to: dir.appendingPathComponent("pattern.png"), type: .png)
     }

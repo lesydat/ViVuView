@@ -1,0 +1,14 @@
+# M10: animated GIF plays frame by frame; Space pauses, . and , step.
+open Tests/Fixtures/zz-animated.gif
+expect-loaded
+wait 700
+expect anim=khung
+key space
+expect ⏸
+key .
+print
+key ,
+print
+key space
+wait 500
+quit

@@ -7,7 +7,7 @@ Bộ tài liệu:
 - [TECH_SPEC.md](TECH_SPEC.md): yêu cầu và thiết kế kỹ thuật.
 - [UI_SPEC.md](UI_SPEC.md): yêu cầu giao diện, cử chỉ, phím tắt, cửa sổ cấu hình.
 
-Trạng thái: **chờ review**. Chưa viết code cho tới khi 3 tài liệu được duyệt.
+Trạng thái: **M0–M10 đã làm** (2026-11-16). Còn lại các mục "chưa kiểm chứng" ở mục 7, cần người dùng thử tay theo `docs/TEST_CHECKLIST.md`.
 
 ## 1. Mục tiêu
 
@@ -116,27 +116,30 @@ Tài liệu được viết để một model nhỏ hơn (Opus 5.5) thực hiệ
 
 App chỉ được coi là xong khi mọi dòng dưới đây có kết quả. Dòng chưa kiểm được ghi "chưa kiểm chứng" kèm lý do, không bỏ trống. Chi tiết từng cách kiểm ở TECH_SPEC mục 11.
 
-| Yêu cầu | Cách kiểm | Kết quả |
+| Yêu cầu | Cách kiểm | Kết quả (2026-11-16, Apple Silicon, macOS 27) |
 |---|---|---|
-| Mở ảnh thường nhanh | `--bench-open`, so mục 3 | |
-| Chuyển ảnh cực nhanh, giữ phím mượt | `--bench-navigate` p50/p95/max, số frame rớt | |
-| Hiệu ứng chuyển ảnh kiểu LilyView | Thử tay (checklist) + quay màn hình không chớp | |
-| File vài GB (TIFF, PSB) mở nhanh, zoom mượt | `--bench-open`, signpost, so pixel với ImageIO | |
-| RAM trong ngân sách, không rò rỉ | `phys_footprint`, test 2 vòng 5.000 ảnh | |
-| Không tốn CPU khi đứng yên | Đo 10s | |
-| Hình vẽ đúng (màu, orientation, tile) | Test ảnh mẫu `ViVuRender` | |
-| Cử chỉ trackpad | Thử tay (checklist) | |
-| Phím tắt đúng bảng UI_SPEC mục 6 | `--script` + thử tay | |
-| Status bar, thanh tiêu đề hover | `--script` chụp hình + thử tay | |
-| Panel thông tin (I) | `--script` chụp hình + thử tay | |
-| Filmstrip sát đáy màn hình, ngoài cửa sổ | Thử tay: Dock ẩn/hiện, nhiều màn hình, fullscreen | |
-| Gallery masonry, cửa sổ tự phóng to | Test layout + `--script` chụp hình | |
-| Point/Pixel | Test Viewport + ảnh mẫu | |
-| Cửa sổ cấu hình, mọi tuỳ chọn có hiệu lực | Thử tay (checklist) | |
-| Gắn định dạng file | Thử tay trong Finder | |
-| Chỉ dùng RAM, không ghi đĩa | `fs_usage` trong kịch bản 5.000 ảnh | |
-| Universal | `lipo -archs`; lát x86_64 qua Rosetta | |
-| Không phụ thuộc Homebrew khi chạy | `otool -L`; chạy `.app` từ thư mục khác, PATH không có Homebrew | |
-| Chạy trên macOS 14–15 | Máy/máy ảo của người dùng | |
-| Chạy trên máy Intel thật | Máy của người dùng | |
-| File hỏng không làm crash | Test file cắt cụt/sai bảng + thử tay | |
+| Mở ảnh thường nhanh | `--bench-open` | **Đạt**: JPEG 12MP hiện sau 215ms tính từ lúc khởi động tiến trình (gồm cả khởi động app) |
+| Chuyển ảnh cực nhanh, giữ phím mượt | `--bench-navigate` | **Đạt**: đã preload p50 3,0ms / p95 9,5ms / max 16ms; giữ phím 30Hz 120/120 ảnh hiện, max 8,1ms; liên tục chưa preload p50 14ms / p95 58ms. HEIC chưa preload chậm hơn (~150–250ms, decoder hệ thống) |
+| Hiệu ứng chuyển ảnh kiểu LilyView | Ảnh chụp giữa hiệu ứng + thử tay | Hình giữa hiệu ứng đúng (ảnh cũ trượt trái mờ dần, ảnh mới vào từ phải). Chớp hình và cảm giác: **chưa kiểm chứng**, cần thử tay (checklist 4.4, 4.15) |
+| File vài GB (TIFF, PSB) mở nhanh, zoom mượt | `--bench-open`, `--bench-zoom`, `vivu-bench huge`, test so ImageIO | **Đạt phần chính**: BigTIFF 3GB có overview 225ms; TIFF 2,2GB không overview 0,97s; PSB 1,4GB 0,95s; tile sau pan 50–124ms. **Chưa đạt** mục tiêu ấm 300ms cho file không overview (0,66–0,77s) |
+| RAM trong ngân sách, không rò rỉ | `phys_footprint`, 2 vòng duyệt | **Đạt**: file khổng lồ đỉnh ≤ 1,04GB; vòng 1 → vòng 2: 852 → 851MB. Ngoại lệ đã ghi: JPEG 200MP (tầng M qua ImageIO) đỉnh 3,1GB |
+| Không tốn CPU khi đứng yên | `--bench-idle` | **Đạt**: 0,04% (ảnh tĩnh); ảnh động đang phát 1,7% |
+| Hình vẽ đúng (màu, orientation, tile) | Test `ViVuRender`, `DecodeTests` | **Đạt**: 8 orientation khớp ImageIO; ghép tile khớp một texture ở 4 mức zoom/xoay; chưa so màu bằng thiết bị đo |
+| Cử chỉ trackpad | Thử tay | **Chưa kiểm chứng** (checklist mục M4) |
+| Phím tắt đúng UI_SPEC mục 6 | Kịch bản `m2`–`m10` + thử tay | **Đạt** với các phím có trong kịch bản; phần còn lại theo checklist |
+| Status bar, thanh tiêu đề hover | Kịch bản `m2` (ảnh chụp) | **Đạt** (ảnh chụp); vật liệu kính chỉ thấy khi thử tay |
+| Panel thông tin (I) | Kịch bản `m9` (ảnh chụp) | **Đạt** (ảnh chụp); bản đồ GPS **chưa kiểm chứng** (không có ảnh thử có GPS) |
+| Filmstrip sát đáy màn hình, ngoài cửa sổ | Kịch bản `m5` + thử tay | Vẽ đúng (ảnh chụp). Vị trí với Dock / nhiều màn hình / vùng nóng: **chưa kiểm chứng** (checklist M5) |
+| Gallery masonry, cửa sổ tự phóng to | Test layout + kịch bản `m6` | **Đạt** |
+| Point/Pixel | Test Viewport + kịch bản | **Đạt** (test); thử tay trên màn Retina theo checklist |
+| Cửa sổ cấu hình, mọi tuỳ chọn có hiệu lực | Kịch bản `m9` + thử tay | Giao diện đạt (ảnh chụp); từng tuỳ chọn: một phần qua kịch bản (`setting …`), còn lại **chưa kiểm chứng** |
+| Gắn định dạng file | Test logic + thử tay | Logic đạt test; thao tác thật trong Finder **chưa kiểm chứng** (cần chạy app từ /Applications, sẽ đổi app mặc định thật) |
+| Chỉ dùng RAM, không ghi đĩa | Duyệt 500 ảnh + gallery, tìm file mới | **Đạt**: chỉ có file cấu hình UserDefaults. `fs_usage` cần quyền sudo nên không chạy được |
+| Universal | `lipo -archs`; lát x86_64 qua Rosetta | **Đạt**: `x86_64 arm64`; mọi kịch bản chạy qua Rosetta |
+| Không phụ thuộc Homebrew khi chạy | `otool -L`; chạy bản chép ở thư mục khác, PATH sạch | **Đạt** |
+| Chạy trên macOS 14–15 | Máy/máy ảo của người dùng | **Chưa kiểm chứng** |
+| Chạy trên máy Intel thật | Máy của người dùng | **Chưa kiểm chứng** (chỉ Rosetta) |
+| File hỏng không làm crash | Test file cắt cụt/sai bảng (PSB, TIFF) + kịch bản smoke | **Đạt** |
+| Ảnh động | Test + kịch bản `m10` | **Đạt** (GIF); WebP/APNG/AVIF/HEICS dùng cùng đường, chưa có file thử |
+| RAW | — | **Chưa kiểm chứng**: máy phát triển không có file RAW |
+| Tiếng Việt / tiếng Anh | Chạy với `-AppleLanguages` | **Đạt** |

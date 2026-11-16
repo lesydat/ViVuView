@@ -1,0 +1,1719 @@
+{
+  "sourceLanguage": "vi",
+  "strings": {
+    "": {},
+    "%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld MB": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld MB"
+          }
+        }
+      }
+    },
+    "%lld loại không đổi được (có thể bạn đã từ chối hộp thoại hệ thống).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld types could not be changed (the system dialog may have been declined)."
+          }
+        }
+      }
+    },
+    "%lld ms": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ms"
+          }
+        }
+      }
+    },
+    "%lld pt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pt"
+          }
+        }
+      }
+    },
+    "%lld ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld images"
+          }
+        }
+      }
+    },
+    "128 MB": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "128 MB"
+          }
+        }
+      }
+    },
+    "256 MB": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "256 MB"
+          }
+        }
+      }
+    },
+    "384 MB (≈ 9.000 ảnh)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "384 MB (≈ 9,000 images)"
+          }
+        }
+      }
+    },
+    "768 MB": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "768 MB"
+          }
+        }
+      }
+    },
+    "Bù sáng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exposure bias"
+          }
+        }
+      }
+    },
+    "Bước zoom bằng phím": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyboard zoom step"
+          }
+        }
+      }
+    },
+    "Bạn cũng có thể đổi trong Finder: chọn file → Get Info → Open with → Change All.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can also change this in Finder: select a file → Get Info → Open with → Change All."
+          }
+        }
+      }
+    },
+    "Bỏ chọn tất cả": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deselect All"
+          }
+        }
+      }
+    },
+    "Bộ nhớ cho thumbnail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thumbnail memory"
+          }
+        }
+      }
+    },
+    "Bộ nhớ cho ảnh lớn (tile)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Large image memory (tiles)"
+          }
+        }
+      }
+    },
+    "Chi tiết": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detail"
+          }
+        }
+      }
+    },
+    "Chung": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        }
+      }
+    },
+    "Chuyên dụng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Specialized"
+          }
+        }
+      }
+    },
+    "Chuyển \"%@\" vào Thùng rác?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move \"%@\" to the Trash?"
+          }
+        }
+      }
+    },
+    "Chuyển vào Thùng rác": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        }
+      }
+    },
+    "Chuyển ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change image"
+          }
+        }
+      }
+    },
+    "Chỉ mờ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fade only"
+          }
+        }
+      }
+    },
+    "Chọn cả nhóm": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select group"
+          }
+        }
+      }
+    },
+    "Chọn tất cả": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All"
+          }
+        }
+      }
+    },
+    "Copy đường dẫn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Path"
+          }
+        }
+      }
+    },
+    "Copy ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Image"
+          }
+        }
+      }
+    },
+    "Cài đặt ViVuView": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ViVuView Settings"
+          }
+        }
+      }
+    },
+    "Cài đặt…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings…"
+          }
+        }
+      }
+    },
+    "Cân bằng trắng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "White balance"
+          }
+        }
+      }
+    },
+    "Có": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes"
+          }
+        }
+      }
+    },
+    "Cỡ thumbnail filmstrip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmstrip thumbnail size"
+          }
+        }
+      }
+    },
+    "Cỡ ô (⌘− / ⌘+, pinch)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cell size (⌘− / ⌘+, pinch)"
+          }
+        }
+      }
+    },
+    "Cửa sổ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Window"
+          }
+        }
+      }
+    },
+    "Dung lượng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File size"
+          }
+        }
+      }
+    },
+    "Dùng ảnh xem trước nhúng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use embedded preview"
+          }
+        }
+      }
+    },
+    "Dừng lại": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        }
+      }
+    },
+    "Filmstrip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmstrip"
+          }
+        }
+      }
+    },
+    "Filmstrip (T)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmstrip (T)"
+          }
+        }
+      }
+    },
+    "Gallery (G)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gallery (G)"
+          }
+        }
+      }
+    },
+    "Giới thiệu ViVuView": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About ViVuView"
+          }
+        }
+      }
+    },
+    "Giữ mức zoom khi chuyển ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep zoom when changing images"
+          }
+        }
+      }
+    },
+    "Hiển thị": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display"
+          }
+        }
+      }
+    },
+    "Hiện trong Finder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show in Finder"
+          }
+        }
+      }
+    },
+    "Hiệu năng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Performance"
+          }
+        }
+      }
+    },
+    "Hiệu ứng chuyển ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image transition"
+          }
+        }
+      }
+    },
+    "Huỷ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "Hãy chuyển ViVuView vào thư mục Applications trước khi gắn định dạng.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move ViVuView to the Applications folder before associating formats."
+          }
+        }
+      }
+    },
+    "Hỏi trước khi chuyển vào Thùng rác": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask before moving to Trash"
+          }
+        }
+      }
+    },
+    "Hồ sơ màu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color profile"
+          }
+        }
+      }
+    },
+    "ImageIO không decode được": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ImageIO could not decode it"
+          }
+        }
+      }
+    },
+    "Khi mở ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When opening an image"
+          }
+        }
+      }
+    },
+    "Khi rê chuột": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On hover"
+          }
+        }
+      }
+    },
+    "Khi tới ảnh cuối": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "At the last image"
+          }
+        }
+      }
+    },
+    "Không": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        }
+      }
+    },
+    "Không bao giờ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never"
+          }
+        }
+      }
+    },
+    "Không có ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No image"
+          }
+        }
+      }
+    },
+    "Không hỏi lại": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don't ask again"
+          }
+        }
+      }
+    },
+    "Khẩu độ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperture"
+          }
+        }
+      }
+    },
+    "Kéo ảnh vào đây hoặc nhấn ⌘O": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop an image here or press ⌘O"
+          }
+        }
+      }
+    },
+    "Kích thước": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimensions"
+          }
+        }
+      }
+    },
+    "Kích thước 100%": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100% size"
+          }
+        }
+      }
+    },
+    "Kích thước thật (0)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual Size (0)"
+          }
+        }
+      }
+    },
+    "Loại": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kind"
+          }
+        }
+      }
+    },
+    "Luôn 100%": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always 100%"
+          }
+        }
+      }
+    },
+    "Luôn hiện": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always show"
+          }
+        }
+      }
+    },
+    "Luôn vừa màn hình": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always fit the screen"
+          }
+        }
+      }
+    },
+    "Luôn xử lý RAW đầy đủ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always develop the full RAW"
+          }
+        }
+      }
+    },
+    "Lăn chuột thường": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mouse wheel"
+          }
+        }
+      }
+    },
+    "Lớn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Large"
+          }
+        }
+      }
+    },
+    "Máy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera"
+          }
+        }
+      }
+    },
+    "Máy này không có GPU Metal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Mac has no Metal GPU"
+          }
+        }
+      }
+    },
+    "Máy ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera"
+          }
+        }
+      }
+    },
+    "Mở bằng ViVuView khi double-click trong Finder:": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open with ViVuView when double-clicked in Finder:"
+          }
+        }
+      }
+    },
+    "Mở gần đây": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Recent"
+          }
+        }
+      }
+    },
+    "Mở…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open…"
+          }
+        }
+      }
+    },
+    "Ngày chụp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date taken"
+          }
+        }
+      }
+    },
+    "Ngày sửa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date modified"
+          }
+        }
+      }
+    },
+    "Nhỏ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Small"
+          }
+        }
+      }
+    },
+    "Nền": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background"
+          }
+        }
+      }
+    },
+    "Phím tắt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyboard Shortcuts"
+          }
+        }
+      }
+    },
+    "Phím tắt: xem menu Trợ giúp → Phím tắt.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcuts: see Help → Keyboard Shortcuts."
+          }
+        }
+      }
+    },
+    "Phóng to": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom In"
+          }
+        }
+      }
+    },
+    "Pixel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pixel"
+          }
+        }
+      }
+    },
+    "Point": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Point"
+          }
+        }
+      }
+    },
+    "Quay vòng về đầu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrap around to the first"
+          }
+        }
+      }
+    },
+    "RAW": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAW"
+          }
+        }
+      }
+    },
+    "RAW khác": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other RAW"
+          }
+        }
+      }
+    },
+    "RAW máy ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera RAW"
+          }
+        }
+      }
+    },
+    "Status bar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status bar"
+          }
+        }
+      }
+    },
+    "Sắp xếp tăng dần": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ascending order"
+          }
+        }
+      }
+    },
+    "Sắp xếp ảnh trong thư mục": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort images in a folder by"
+          }
+        }
+      }
+    },
+    "Số khung": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frames"
+          }
+        }
+      }
+    },
+    "Số ảnh nạp trước mỗi phía": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images preloaded on each side"
+          }
+        }
+      }
+    },
+    "Theo kích thước ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follow Image Size"
+          }
+        }
+      }
+    },
+    "Thoát ViVuView": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit ViVuView"
+          }
+        }
+      }
+    },
+    "Thoát app khi đóng cửa sổ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit when the window closes"
+          }
+        }
+      }
+    },
+    "Thu nhỏ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom Out"
+          }
+        }
+      }
+    },
+    "Thông tin (I)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Info (I)"
+          }
+        }
+      }
+    },
+    "Thư mục": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder"
+          }
+        }
+      }
+    },
+    "Thư mục không còn ảnh nào": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No images left in this folder"
+          }
+        }
+      }
+    },
+    "Thời lượng hiệu ứng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transition duration"
+          }
+        }
+      }
+    },
+    "Thủ công": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual"
+          }
+        }
+      }
+    },
+    "Tiêu cự": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focal length"
+          }
+        }
+      }
+    },
+    "Toàn màn hình (F)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full Screen (F)"
+          }
+        }
+      }
+    },
+    "Toạ độ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordinates"
+          }
+        }
+      }
+    },
+    "Trượt + mờ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slide + fade"
+          }
+        }
+      }
+    },
+    "Trợ giúp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help"
+          }
+        }
+      }
+    },
+    "Tên": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "Tên (như Finder)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name (like Finder)"
+          }
+        }
+      }
+    },
+    "Tệp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        }
+      }
+    },
+    "Tốc độ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shutter speed"
+          }
+        }
+      }
+    },
+    "Tự động": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto"
+          }
+        }
+      }
+    },
+    "Tự ẩn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto-hide"
+          }
+        }
+      }
+    },
+    "ViVuView không lưu thumbnail hay bộ nhớ đệm ra đĩa.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ViVuView never writes thumbnails or caches to disk."
+          }
+        }
+      }
+    },
+    "Vị trí": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location"
+          }
+        }
+      }
+    },
+    "Vừa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fit"
+          }
+        }
+      }
+    },
+    "Vừa cửa sổ (\\)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fit to Window (\\)"
+          }
+        }
+      }
+    },
+    "Vừa màn hình, tối đa 100%": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fit the screen, at most 100%"
+          }
+        }
+      }
+    },
+    "Xem": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View"
+          }
+        }
+      }
+    },
+    "Xoay phải (])": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotate Right (])"
+          }
+        }
+      }
+    },
+    "Xoay trái ([)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotate Left ([)"
+          }
+        }
+      }
+    },
+    "Xoá danh sách": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Menu"
+          }
+        }
+      }
+    },
+    "Xám đậm": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dark gray"
+          }
+        }
+      }
+    },
+    "Zoom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        }
+      }
+    },
+    "chuyển vào Thùng rác": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "move to Trash"
+          }
+        }
+      }
+    },
+    "copy ảnh · copy đường dẫn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copy image · copy path"
+          }
+        }
+      }
+    },
+    "file hỏng (%@)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "damaged file (%@)"
+          }
+        }
+      }
+    },
+    "giảm mẫu 1/%lld, %lld tile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "subsampled 1/%lld, %lld tiles"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "giảm mẫu 1/%1$lld, %2$lld tile"
+          }
+        }
+      }
+    },
+    "hiện trong Finder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "show in Finder"
+          }
+        }
+      }
+    },
+    "khung %lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "frame %lld/%lld"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "khung %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "khung trước / sau (ảnh động)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "previous / next frame (animations)"
+          }
+        }
+      }
+    },
+    "không mở được file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cannot open the file"
+          }
+        }
+      }
+    },
+    "không nạp được độ phân giải đầy đủ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "full resolution unavailable"
+          }
+        }
+      }
+    },
+    "kéo giãn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stretched"
+          }
+        }
+      }
+    },
+    "kéo giãn tương phản (ảnh 16-bit)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "contrast stretch (16-bit images)"
+          }
+        }
+      }
+    },
+    "pyramid trong RAM, %lld tile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM pyramid, %lld tiles"
+          }
+        }
+      }
+    },
+    "thông tin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "info"
+          }
+        }
+      }
+    },
+    "toàn màn hình": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "full screen"
+          }
+        }
+      }
+    },
+    "tuyến tính": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "linear"
+          }
+        }
+      }
+    },
+    "tối đa 1/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "max 1/%lld"
+          }
+        }
+      }
+    },
+    "vừa cửa sổ (nhấn 2 lần: theo kích thước ảnh)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fit to window (twice: follow image size)"
+          }
+        }
+      }
+    },
+    "xoay trái / phải": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rotate left / right"
+          }
+        }
+      }
+    },
+    "zoom (đang zoom thì mũi tên pan; ⌘← ⌘→ chuyển ảnh)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zoom (when zoomed, arrows pan; ⌘← ⌘→ change image)"
+          }
+        }
+      }
+    },
+    "Ô caro (ảnh trong suốt)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checkerboard (transparent images)"
+          }
+        }
+      }
+    },
+    "Đang hiển thị": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing"
+          }
+        }
+      }
+    },
+    "Đen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Black"
+          }
+        }
+      }
+    },
+    "Đi tới": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go"
+          }
+        }
+      }
+    },
+    "Điều khiển": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controls"
+          }
+        }
+      }
+    },
+    "Đóng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        }
+      }
+    },
+    "Đảo chiều vuốt chuyển ảnh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invert swipe direction"
+          }
+        }
+      }
+    },
+    "Định dạng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formats"
+          }
+        }
+      }
+    },
+    "Độ rộng cột Gallery": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gallery column width"
+          }
+        }
+      }
+    },
+    "Độ sâu bit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bit depth"
+          }
+        }
+      }
+    },
+    "đang nạp chi tiết…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "loading detail…"
+          }
+        }
+      }
+    },
+    "đang nạp…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "loading…"
+          }
+        }
+      }
+    },
+    "đã huỷ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cancelled"
+          }
+        }
+      }
+    },
+    "đóng panel / gallery / fullscreen / cửa sổ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "close panel / gallery / full screen / window"
+          }
+        }
+      }
+    },
+    "đầy đủ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "full"
+          }
+        }
+      }
+    },
+    "định dạng không hỗ trợ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unsupported format"
+          }
+        }
+      }
+    },
+    "đọc theo vùng từ file, %lld tile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "read by region from the file, %lld tiles"
+          }
+        }
+      }
+    },
+    "Ảnh cuối (End)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Image (End)"
+          }
+        }
+      }
+    },
+    "Ảnh sau": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Image"
+          }
+        }
+      }
+    },
+    "Ảnh thông dụng": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Common images"
+          }
+        }
+      }
+    },
+    "Ảnh trước": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous Image"
+          }
+        }
+      }
+    },
+    "Ảnh đầu (Home)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First Image (Home)"
+          }
+        }
+      }
+    },
+    "ảnh trước / sau (giữ để lướt)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "previous / next image (hold to browse)"
+          }
+        }
+      }
+    },
+    "ảnh đầu / cuối": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "first / last image"
+          }
+        }
+      }
+    },
+    "Ẩn ViVuView": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide ViVuView"
+          }
+        }
+      }
+    },
+    "Ống kính": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lens"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

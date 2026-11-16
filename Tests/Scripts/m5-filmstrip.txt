@@ -6,7 +6,7 @@ key t
 expect filmstrip=shown
 snapshot-filmstrip build/smoke/m5-filmstrip.png
 key right
-expect pos=5/10
+expect pos=5/11
 wait 400
 snapshot-filmstrip build/smoke/m5-filmstrip-next.png
 key t

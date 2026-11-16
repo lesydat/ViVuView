@@ -89,3 +89,15 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 9.8 | Bỏ tích JPEG | Trả về app mặc định trước đó | | |
 | 9.9 | Nền "Ô caro", mở PNG trong suốt | Ô caro sau phần trong suốt | | |
 | 9.10 | Trợ giúp → Phím tắt | Bảng phím đúng UI_SPEC mục 6 | | |
+
+## M10 — Hoàn thiện
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 10.1 | Mở GIF / WebP / APNG động | Phát đúng tốc độ; Space dừng/phát; `,` `.` từng khung; status bar ghi "khung i/n" | | |
+| 10.2 | Mở RAW (CR3, NEF, ARW, DNG…) | Hiện nhanh từ ảnh xem trước nhúng; zoom 100% thì xử lý RAW đầy đủ | | |
+| 10.3 | Settings → RAW "Luôn xử lý RAW đầy đủ" | Mọi RAW hiện bản xử lý đầy đủ | | |
+| 10.4 | Đổi ngôn ngữ hệ thống sang English (hoặc chạy `open -a ViVuView --args -AppleLanguages "(en)"`) | Giao diện tiếng Anh | | |
+| 10.5 | Mở nhiều ảnh lớn liên tục khi máy thiếu RAM | App không bị đóng; ảnh hiện tại vẫn xem được | | |
+| 10.6 | Chạy trên macOS 14 hoặc 15 (máy thật hoặc máy ảo) | Mọi mục ở trên chạy; lớp phủ dùng nền mờ tối thay cho kính | | |
+| 10.7 | Chạy trên máy Mac Intel thật | Mọi mục ở trên chạy; ghi lại tốc độ chuyển ảnh | | |

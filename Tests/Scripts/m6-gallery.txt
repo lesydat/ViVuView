@@ -12,11 +12,11 @@ expect sel=4
 key home
 expect sel=1
 key end
-expect sel=10
+expect sel=11
 key escape
 wait 400
 expect gallery=closed
-expect pos=3/10
+expect pos=3/11
 action toggleGallery
 wait 400
 key right
@@ -24,7 +24,7 @@ key right
 key enter
 wait 400
 expect gallery=closed
-expect pos=5/10
+expect pos=5/11
 expect image=orientation-4.jpg
 expect window=320x240
 quit

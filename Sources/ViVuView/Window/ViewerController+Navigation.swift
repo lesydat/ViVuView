@@ -153,6 +153,7 @@ extension ViewerController {
         let signpost = Signposts.navigate.beginInterval("Navigate", id: Signposts.navigate.makeSignpostID(), "\(url.lastPathComponent)")
         defer { Signposts.navigate.endInterval("Navigate", signpost) }
         currentURL = url
+        if animation.url != nil && animation.url != url { animation.reset() }
         info = nil
         infoTicket?.cancel()
         window.title = url.lastPathComponent
@@ -202,8 +203,10 @@ extension ViewerController {
     /// Keeps the planned neighbours decoded and drops everything else (docs/TECH_SPEC.md §5.2–5.3).
     func refreshPreload() {
         guard let index = nav.index, !nav.entries.isEmpty else { return }
+        // Under memory pressure: fewer neighbours.
+        let perSide = memoryWatcherLevelLimit ?? settings.preloadEachSide
         let plan = PreloadPlanner.plan(index: index, count: nav.entries.count, direction: nav.direction,
-                                       perSide: settings.preloadEachSide, wrap: settings.wrapAround)
+                                       perSide: perSide, wrap: settings.wrapAround)
         let wanted = plan.screen.map { nav.entries[$0].url }
         // Thumbnails around the current image (stage 0) wait until browsing pauses: made while the user is
         // stepping quickly they would compete with the neighbours' screen decodes (docs/BENCH.md, M5).

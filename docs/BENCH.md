@@ -27,3 +27,5 @@ Mỗi mốc ghi kết quả đo ở đây (TECH_SPEC mục 11.2). Mốc sau ch�
 | M8 | 2026-11-16 | như trên | M8 | TIFF 720MP không overview (2,2GB): fit + tầng RAM / mở từ khởi động | 0,77–0,97s / 0,97s | — | — | ImageIO 6,6–8,6s; mục tiêu ấm 300ms **chưa đạt** (đọc 2,2GB); RAM đỉnh 1,04GB |
 | M8 | 2026-11-16 | như trên | M8 | PSB 480MP RLE (1,4GB): fit + tầng RAM / mở từ khởi động | 0,66–1,05s / 0,95s | — | — | ImageIO 2,4–3,0s; mục tiêu ấm 300ms **chưa đạt**; RAM đỉnh 0,72GB |
 | M8 | 2026-11-16 | như trên | M8 | Ảnh khổng lồ: đủ tile ở 100% / sau khi pan | 74–278ms / 50–124ms | — | — | Mục tiêu pan ≤150ms: đạt |
+| M10 | 2026-11-16 | như trên | M10 | Next/prev đã preload (A2) / liên tục (B) / giữ phím (C) | 3,0 / 14,2 / 3,1ms | 9,5 / 57,5 / 6,9ms | 16,0 / 80,3 / 8,1ms | Footprint vòng 1 → 2: 852 → 851MB |
+| M10 | 2026-11-16 | như trên | M10 | Mở JPEG 12MP từ khởi động / CPU đứng yên (ảnh tĩnh, GIF đang phát) | 215ms / 0,04% / 1,68% | — | — | |

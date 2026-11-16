@@ -2,26 +2,26 @@
 open Tests/Fixtures/orientation-1.jpg
 expect-loaded
 wait 300
-expect pos=2/10
+expect pos=2/11
 key right
-expect pos=3/10
+expect pos=3/11
 expect image=orientation-2.jpg
 key cmd+right
-expect pos=4/10
+expect pos=4/11
 key space
-expect pos=5/10
+expect pos=5/11
 key shift+space
-expect pos=4/10
+expect pos=4/11
 key end
-expect pos=10/10
-expect image=pattern.png
+expect pos=11/11
+expect image=zz-animated.gif
 key right
-expect pos=10/10
+expect pos=11/11
 key home
-expect pos=1/10
+expect pos=1/11
 expect-error
 key pagedown
-expect pos=2/10
+expect pos=2/11
 expect-loaded
 snapshot build/smoke/m3-nav.png
 quit
