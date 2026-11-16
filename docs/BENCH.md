@@ -17,3 +17,6 @@ Mỗi mốc ghi kết quả đo ở đây (TECH_SPEC mục 11.2). Mốc sau ch�
 | M3 | 2026-11-16 | như trên | M3 | CPU khi đứng yên 10s với ảnh tĩnh | 0,03% | — | — | Mục tiêu < 1% |
 | M4 | 2026-11-16 | như trên | M4 | Next/prev đã preload (A2, hiệu ứng tắt khi đo) | 2,8ms | 10,5ms | 17,7ms | Không chậm hơn M3 quá 20%; footprint vòng 1 → 2: 782 → 787MB |
 | M4 | 2026-11-16 | như trên | M4 | Giữ phím 30Hz (C) | 3,1ms | 6,9ms | 8,9ms | 120/120 ảnh hiện |
+| M5 | 2026-11-16 | như trên | M5 | Next/prev đã preload (A2) | 2,6–3,1ms | 10,6–11,6ms | 14,7ms | Có filmstrip/thumbnail nền |
+| M5 | 2026-11-16 | như trên | M5 | Liên tục, chờ sắc nét (B) | 10,8–13,8ms | 63–65ms | 72–89ms | Lần đầu đo được p50 15,5–17,7ms (vượt 20%) do thumbnail ±20 tranh CPU → tách hàng đợi thumbnail (2 luồng, QoS utility) và hoãn thumbnail điều hướng tới khi dừng duyệt 250ms |
+| M5 | 2026-11-16 | như trên | M5 | Giữ phím 30Hz (C) | 3,3ms | 6,8–7,1ms | 9,9ms | 120/120 ảnh hiện |

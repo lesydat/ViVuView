@@ -226,7 +226,8 @@ Với vị trí `i`, hướng duyệt gần nhất `d` (±1), số ảnh preload
 ### 5.3 `DecodeScheduler`
 Hai `OperationQueue`:
 - `interactive`: QoS userInteractive, `maxConcurrent = 2`, chỉ cho ảnh hiện tại.
-- `background`: QoS utility, `maxConcurrent = max(2, số nhân − 3)`, cho hàng xóm, thumbnail, dựng pyramid; `queuePriority` theo thứ tự ở 5.2.
+- `background`: QoS userInitiated, `maxConcurrent = max(2, số nhân − 3)`, cho hàng xóm và dựng pyramid; `queuePriority` theo thứ tự ở 5.2.
+- `thumbnails`: QoS utility, `maxConcurrent = 2`, cho thumbnail và đọc kích thước ảnh. Tách riêng vì đo ở M5 cho thấy thumbnail chạy chung hàng làm chậm decode hàng xóm. Thumbnail ±20 quanh ảnh hiện tại chỉ được xin sau khi người dùng dừng duyệt 250ms.
 
 Mỗi operation kiểm tra `isCancelled` trước decode và trước upload. Hàng xóm thành ảnh hiện tại mà tác vụ chưa chạy: huỷ ở `background`, tạo lại ở `interactive`. Việc chỉ cần kết quả mới nhất (tile, vùng zoom) đi qua `LatestWins`.
 

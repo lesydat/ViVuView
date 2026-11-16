@@ -41,6 +41,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
     let nav = NavigationState()
     /// Transition, bounce and gesture animation state (ViewerController+Transition.swift).
     let fx = EffectsState()
+    /// Thumbnails (RAM only) for stage 0, the filmstrip and the gallery.
+    let thumbs: ThumbnailService
+    let strip = FilmstripState()
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
@@ -65,7 +68,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
         titleBar = TitleBarOverlay(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: TitleBarOverlay.height))
         statusBar = StatusBar(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: StatusBar.height))
         zoomBadge = ZoomBadge(frame: NSRect(x: 0, y: 0, width: 72, height: 26))
+        thumbs = ThumbnailService(renderer: renderer, scheduler: scheduler, budgetMB: Settings.shared.thumbnailMemoryMB)
         super.init()
+        thumbs.onThumbnail.append { [weak self] url in self?.thumbnailArrivedForNavigation(url) }
         content.controller = self
         content.addFill(metalView)
         content.addFill(messageView)
@@ -179,7 +184,11 @@ final class ViewerController: NSObject, NSWindowDelegate {
 
     /// Available screen area for the window, in points.
     var availableFrame: CGRect {
-        (window.screen ?? NSScreen.main)?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        var frame = (window.screen ?? NSScreen.main)?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let strip = filmstripReservedHeight
+        frame.origin.y += strip
+        frame.size.height -= strip
+        return frame
     }
 
     /// Sizes the window for the current image at fit, or at `zoom` (relative to 100%) when given.
@@ -308,7 +317,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .first: go(to: 0, direction: 1)
         case .last: go(to: nav.entries.count - 1, direction: -1)
         case .moveToTrash: moveCurrentToTrash()
-        case .toggleFilmstrip, .toggleGallery, .toggleInfo, .toggleStretch,
+        case .toggleFilmstrip: toggleFilmstrip()
+        case .toggleGallery, .toggleInfo, .toggleStretch,
              .previousFrame, .nextFrame, .togglePlayback:
             performLater(command)
         }
@@ -366,6 +376,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
             _ = settings.renderUnit
             _ = settings.statusBar
             _ = settings.background
+            _ = settings.filmstrip
+            _ = settings.filmstripThumb
+            _ = settings.thumbnailMemoryMB
         }, onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -376,6 +389,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
     }
 
     func applySettings() {
+        thumbs.setBudget(megabytes: settings.thumbnailMemoryMB)
+        if settings.filmstrip == .always { showFilmstrip() } else if !strip.pinned { hideFilmstrip() }
+        if filmstripVisible { showFilmstrip() }
         switch settings.background {
         case .black, .checkerboard: metalView.clearColor = SIMD4(0, 0, 0, 1)
         case .darkGray: metalView.clearColor = SIMD4(0.11, 0.11, 0.12, 1)
@@ -456,7 +472,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         return "image=\(currentURL?.lastPathComponent ?? "-") pos=\(positionText ?? "-") size=\(meta.map { "\($0.orientedSize)" } ?? "-") "
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
-            + "status=\(statusBarShown) transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
+            + "status=\(statusBarShown) filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
             + "error=\(lastError ?? "-")"
     }
 

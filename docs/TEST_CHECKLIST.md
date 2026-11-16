@@ -22,3 +22,20 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 4.13 | Hai màn hình: cửa sổ ở màn phụ, nhấn → | Hiệu ứng chạy trên đúng màn hình chứa cửa sổ | | |
 | 4.14 | Bật "Giảm chuyển động" trong System Settings → Accessibility | Chỉ còn hiệu ứng mờ, không trượt | | |
 | 4.15 | So cảm giác với LilyView (tốc độ, quãng trượt, ngưỡng thả) | Ghi lại chỗ khác để chỉnh `ViewerController+Transition.swift` | | |
+
+## M5 — Filmstrip
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 5.1 | Nhấn T | Một hàng thumbnail hiện sát đáy màn hình (ngay trên Dock), rộng hết màn hình, ngoài cửa sổ ảnh; ảnh hiện tại ở giữa có viền trắng | | |
+| 5.2 | Cửa sổ ảnh đang chồng lên vùng đáy, nhấn T | Cửa sổ được đẩy lên/thu lại, không bị filmstrip che | | |
+| 5.3 | Chuyển ảnh khi filmstrip đang hiện | Dải trượt mượt để ảnh mới vào giữa | | |
+| 5.4 | Click một thumbnail | Nhảy tới ảnh đó | | |
+| 5.5 | Cuộn 2 ngón trên dải | Dải trượt, ảnh hiện tại không đổi | | |
+| 5.6 | Rê chuột lên một thumbnail | Tooltip tên file | | |
+| 5.7 | Chế độ Tự ẩn: đưa chuột xuống sát đáy màn hình (Dock hiện / Dock tự ẩn) | Filmstrip hiện; rời chuột 2s thì ẩn; không giành chỗ với Dock | | |
+| 5.8 | Vuốt 2 ngón lên / xuống khi ảnh đang vừa cửa sổ | Hiện / ẩn filmstrip | | |
+| 5.9 | Chuyển sang app khác | Filmstrip ẩn theo | | |
+| 5.10 | Fullscreen + T | Filmstrip phủ lên đáy ảnh | | |
+| 5.11 | Thư mục vài nghìn ảnh, cuộn nhanh dải | Mượt, ô xám rồi thumbnail hiện dần | | |
+| 5.12 | Hai màn hình | Filmstrip ở đáy màn hình đang chứa cửa sổ ảnh | | |

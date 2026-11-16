@@ -62,6 +62,13 @@ final class ScriptRunner {
         case .setting(let key, let value):
             try viewer.settings.set(key, value)
             try await Task.sleep(for: .milliseconds(30))
+        case .snapshotFilmstrip(let path):
+            try await settle()
+            try await Task.sleep(for: .milliseconds(300))
+            guard let panel = viewer.strip.panel, panel.isVisible, let image = panel.stripView.snapshotImage() else {
+                throw ScriptError.message("filmstrip not shown")
+            }
+            try Self.write(image, to: path)
         case .snapshotTransition(let path):
             guard let overlay = viewer.fx.overlay, viewer.isTransitioning, let image = overlay.view.snapshotImage() else {
                 throw ScriptError.message("no transition running")
@@ -74,6 +81,13 @@ final class ScriptRunner {
             let state = viewer.scriptState()
             guard state.contains(text) else { throw ScriptError.message("expected \"\(text)\" in: \(state)") }
         }
+    }
+
+    static func write(_ image: CGImage, to path: String) throws {
+        let url = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: url)
+        print("snapshot: \(path)")
     }
 
     /// Lets pending layout, decodes and renders finish.
@@ -96,6 +110,7 @@ enum ScriptCommand: Equatable {
     case expect(String)
     case setting(String, String)
     case snapshotTransition(String)
+    case snapshotFilmstrip(String)
 }
 
 enum ScriptParser {
@@ -121,6 +136,7 @@ enum ScriptParser {
             case ("action", let name?): command = .action(name)
             case ("expect", let text?): command = .expect(text)
             case ("snapshot-transition", let path?): command = .snapshotTransition(path)
+            case ("snapshot-filmstrip", let path?): command = .snapshotFilmstrip(path)
             case ("setting", let rest?):
                 let kv = rest.split(separator: " ", maxSplits: 1).map(String.init)
                 guard kv.count == 2 else { throw ScriptError.badLine(index + 1, line) }

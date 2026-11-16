@@ -36,6 +36,8 @@ final class NavigationState {
     var scanning = false
     /// Steps requested while the folder was still being scanned.
     var pendingSteps = 0
+    /// Delayed request for the thumbnails around the current image.
+    var thumbTask: Task<Void, Never>?
     /// The slot whose pixels are on screen (may lag behind `index` until it decodes).
     var shownURL: URL?
 
@@ -112,8 +114,10 @@ extension ViewerController {
         scanFolder(keeping: url)
     }
 
-    /// Hook for the filmstrip and gallery (M5, M6).
-    func folderChanged() {}
+    /// The file list changed: filmstrip and gallery follow.
+    func folderChanged() {
+        filmstripFolderChanged()
+    }
 
     // MARK: Moving
 
@@ -153,6 +157,7 @@ extension ViewerController {
         window.representedURL = url
         titleBar.title = url.lastPathComponent
         let slot = slot(for: url)
+        if slot.screen == nil, slot.thumb == nil, let thumb = thumbs.texture(for: url) { slot.thumb = thumb }   // stage 0
         isLoading = !slot.isDone
         if let best = slot.best {
             nav.shownURL = url
@@ -169,8 +174,9 @@ extension ViewerController {
         imageWillAppear(url)
     }
 
-    /// Hook for the filmstrip / transition (M4, M5).
-    func imageWillAppear(_ url: URL) {}
+    func imageWillAppear(_ url: URL) {
+        filmstripCurrentChanged()
+    }
 
     private func readInfo(_ url: URL) {
         infoTicket = scheduler.submit(.background, priority: .high, work: { _ in try ImageInfo.read(url) },
@@ -196,6 +202,15 @@ extension ViewerController {
         let plan = PreloadPlanner.plan(index: index, count: nav.entries.count, direction: nav.direction,
                                        perSide: settings.preloadEachSide, wrap: settings.wrapAround)
         let wanted = plan.screen.map { nav.entries[$0].url }
+        // Thumbnails around the current image (stage 0) wait until browsing pauses: made while the user is
+        // stepping quickly they would compete with the neighbours' screen decodes (docs/BENCH.md, M5).
+        let thumbURLs = plan.thumbnails.map { nav.entries[$0].url }
+        nav.thumbTask?.cancel()
+        nav.thumbTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard let self, !Task.isCancelled else { return }
+            thumbs.want(thumbURLs, client: "navigation")
+        }
         let wantedSet = Set(wanted)
         // Drop slots that left the neighbourhood (keep the one still on screen).
         for (url, slot) in nav.slots where !wantedSet.contains(url) && url != nav.shownURL {

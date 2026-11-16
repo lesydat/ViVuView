@@ -360,6 +360,14 @@ extension ViewerController {
     /// Hook: pinch-in past fit opens the gallery (M6).
     func pinchedBelowFit() {}
 
-    /// Hook: vertical swipe at fit shows (up) or hides (down) the filmstrip (M5).
-    func verticalSwipe(up: Bool) {}
+    /// Vertical swipe at fit shows (up) or hides (down) the filmstrip.
+    func verticalSwipe(up: Bool) {
+        if up {
+            strip.pinned = true
+            showFilmstrip()
+        } else {
+            strip.pinned = false
+            hideFilmstrip()
+        }
+    }
 }

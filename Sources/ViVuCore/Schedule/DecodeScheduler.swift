@@ -4,7 +4,7 @@ import Foundation
 /// `background` for neighbours, thumbnails and pyramids. Work runs off the main thread;
 /// completions come back on the main actor unless the operation was cancelled.
 public final class DecodeScheduler: Sendable {
-    public enum Lane: Sendable { case interactive, background }
+    public enum Lane: Sendable { case interactive, background, thumbnails }
 
     public enum Priority: Int, Sendable {
         case veryHigh = 8, high = 4, normal = 0, low = -4, veryLow = -8
@@ -22,6 +22,8 @@ public final class DecodeScheduler: Sendable {
 
     let interactive: OperationQueue
     let background: OperationQueue
+    /// Thumbnails and header reads: never compete with the images being looked at.
+    let thumbnails: OperationQueue
 
     public init(backgroundConcurrency: Int? = nil) {
         interactive = OperationQueue()
@@ -30,9 +32,13 @@ public final class DecodeScheduler: Sendable {
         interactive.maxConcurrentOperationCount = 2
         background = OperationQueue()
         background.name = "ViVuView.decode.background"
-        background.qualityOfService = .utility
+        background.qualityOfService = .userInitiated
         let cores = ProcessInfo.processInfo.activeProcessorCount
         background.maxConcurrentOperationCount = backgroundConcurrency ?? max(2, cores - 3)
+        thumbnails = OperationQueue()
+        thumbnails.name = "ViVuView.decode.thumbnails"
+        thumbnails.qualityOfService = .utility
+        thumbnails.maxConcurrentOperationCount = 2
     }
 
     /// Runs `work` on a lane; `completion` runs on the main actor with the result unless the ticket was cancelled.
@@ -52,13 +58,18 @@ public final class DecodeScheduler: Sendable {
         }
         operation.queuePriority = priority.queuePriority
         ticket.attach(operation)
-        (lane == .interactive ? interactive : background).addOperation(operation)
+        switch lane {
+        case .interactive: interactive.addOperation(operation)
+        case .background: background.addOperation(operation)
+        case .thumbnails: thumbnails.addOperation(operation)
+        }
         return ticket
     }
 
     public func cancelAll() {
         interactive.cancelAllOperations()
         background.cancelAllOperations()
+        thumbnails.cancelAllOperations()
     }
 }
 

@@ -1,0 +1,20 @@
+# M5: filmstrip at the bottom of the screen, outside the main window.
+open Tests/Fixtures/orientation-3.jpg
+expect-loaded
+expect filmstrip=hidden
+key t
+expect filmstrip=shown
+snapshot-filmstrip build/smoke/m5-filmstrip.png
+key right
+expect pos=5/10
+wait 400
+snapshot-filmstrip build/smoke/m5-filmstrip-next.png
+key t
+expect filmstrip=hidden
+setting filmstrip always
+wait 200
+expect filmstrip=shown
+setting filmstrip autoHide
+wait 200
+expect filmstrip=hidden
+quit
