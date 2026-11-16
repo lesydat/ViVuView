@@ -102,7 +102,7 @@ struct Viewport: Sendable {
 ## 3. Render (Metal)
 
 - `MetalView: NSView`, `makeBackingLayer()` trả về `CAMetalLayer`; `layerContentsRedrawPolicy = .duringViewResize`; cập nhật `drawableSize` trong `setFrameSize` và `viewDidChangeBackingProperties`.
-- **Vẽ theo yêu cầu:** `setNeedsRender()` gộp yêu cầu vào frame kế. Display link (`NSView.displayLink(target:selector:)`) chỉ chạy khi có animation, quán tính, ảnh động, hoặc dữ liệu đang về.
+- **Vẽ theo yêu cầu:** `setNeedsRender()` gộp yêu cầu vào frame kế. Bộ đếm khung hình chỉ chạy khi có animation, quán tính, ảnh động, hoặc dữ liệu đang về. Đã thử `NSView.displayLink` và `NSScreen.displayLink`: trên macOS 27 không nhận được callback khi cửa sổ đang ẩn (alpha 0 trong lúc chuyển ảnh) hoặc app chạy từ terminal, nên dùng `Timer` 120Hz ở run loop mode `.common`; việc trình chiếu vẫn theo vsync của CAMetalLayer.
 - Khi cửa sổ đổi kích thước (mỗi lần chuyển ảnh): bật `presentsWithTransaction`, vẽ đồng bộ (`commit` → `waitUntilScheduled` → `present`) trong cùng lượt đổi frame, rồi tắt lại. Tránh hình bị kéo giãn một frame.
 - **Một pipeline** vẽ danh sách `Quad` mỗi frame (ảnh, tile, thumbnail, nền, viền chọn):
 

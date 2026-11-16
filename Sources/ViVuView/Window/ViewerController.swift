@@ -39,6 +39,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
     var lastError: String?
     /// Folder, position and decoded neighbours (ViewerController+Navigation.swift).
     let nav = NavigationState()
+    /// Transition, bounce and gesture animation state (ViewerController+Transition.swift).
+    let fx = EffectsState()
 
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
@@ -209,13 +211,14 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Zoom, pan, rotate
 
     /// Zooms to `scale` keeping `anchor` (view point, device pixels) still; grows the window with the zoom.
-    func zoom(to scale: Double, anchor: CGPoint? = nil, flash: Bool = true) {
+    func zoom(to scale: Double, anchor: CGPoint? = nil, flash: Bool = true, allowBelowFit: Bool = false) {
         guard let meta else { return }
         let range = ZoomSteps.limits(fitScale: fitScale, unitScale: unitScale)
         let target = min(max(scale, range.lowerBound), range.upperBound)
         let anchor = anchor ?? CGPoint(x: viewSize.width / 2, y: viewSize.height / 2)
         viewport = effectiveViewport.zoomed(to: target, anchor: anchor, view: viewSize)
-        if !isFullScreen && !fixedFrame { resizeWindowToImage(zoom: target / unitScale) }
+        let shrinkingBelowFit = allowBelowFit && target < fitScale
+        if !isFullScreen && !fixedFrame && !shrinkingBelowFit { resizeWindowToImage(zoom: target / unitScale) }
         if abs(target - fitScale) < fitScale * 0.001 {
             viewport = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: viewport.quarterTurns)
         }
@@ -300,8 +303,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
             if let url = currentURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         case .escape:
             if isFullScreen { window.toggleFullScreen(nil) } else { window.performClose(nil) }
-        case .next: step(by: 1)
-        case .previous: step(by: -1)
+        case .next: navigate(by: 1, animated: true)
+        case .previous: navigate(by: -1, animated: true)
         case .first: go(to: 0, direction: 1)
         case .last: go(to: nav.entries.count - 1, direction: -1)
         case .moveToTrash: moveCurrentToTrash()
@@ -415,14 +418,16 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Scene
 
     func scene(viewSize: CGSize) -> [Quad] {
+        if let transition = fx.transition, transition.inMainView { return transition.quads(viewSize: viewSize) }
         guard let texture, let meta else { return [] }
         var vp = viewport
         if vp.isFit { vp = Viewport.fit(image: meta.orientedSize, view: viewSize, quarterTurns: vp.quarterTurns) }
         let size = CGSize(width: Double(meta.orientedSize.width) * vp.scale, height: Double(meta.orientedSize.height) * vp.scale)
-        let center = vp.viewPoint(CGPoint(x: Double(meta.orientedSize.width) / 2, y: Double(meta.orientedSize.height) / 2), view: viewSize)
+        var center = vp.viewPoint(CGPoint(x: Double(meta.orientedSize.width) / 2, y: Double(meta.orientedSize.height) / 2), view: viewSize)
+        center.x += bounceOffset
         let nearest = vp.scale / max(texture.coverage, 0.0001) >= 4
         return [Quad.placed(texture: texture.texture, center: center, size: size,
-                            rotation: Double(vp.quarterTurns) * .pi / 2, viewSize: viewSize, nearest: nearest)]
+                            rotation: Double(vp.quarterTurns) * .pi / 2 + fx.liveRotation, viewSize: viewSize, nearest: nearest)]
     }
 
     // MARK: Script support
@@ -451,7 +456,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
         return "image=\(currentURL?.lastPathComponent ?? "-") pos=\(positionText ?? "-") size=\(meta.map { "\($0.orientedSize)" } ?? "-") "
             + "scale=\(String(format: "%.4f", effectiveViewport.scale)) zoom=\(zoomText) fit=\(viewport.isFit) "
             + "turns=\(viewport.quarterTurns) window=\(Int(f.width))x\(Int(f.height)) fixed=\(fixedFrame) "
-            + "status=\(statusBarShown) error=\(lastError ?? "-")"
+            + "status=\(statusBarShown) transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
+            + "error=\(lastError ?? "-")"
     }
 
     /// The window content as an image: the Metal scene with the visible overlays drawn on top.

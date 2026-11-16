@@ -59,6 +59,17 @@ final class ScriptRunner {
         case .action(let name):
             try viewer.performScriptAction(name)
             try await settle()
+        case .setting(let key, let value):
+            try viewer.settings.set(key, value)
+            try await Task.sleep(for: .milliseconds(30))
+        case .snapshotTransition(let path):
+            guard let overlay = viewer.fx.overlay, viewer.isTransitioning, let image = overlay.view.snapshotImage() else {
+                throw ScriptError.message("no transition running")
+            }
+            let rep = NSBitmapImageRep(cgImage: image)
+            try FileManager.default.createDirectory(at: URL(fileURLWithPath: path).deletingLastPathComponent(), withIntermediateDirectories: true)
+            try rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+            print("snapshot: \(path)")
         case .expect(let text):
             let state = viewer.scriptState()
             guard state.contains(text) else { throw ScriptError.message("expected \"\(text)\" in: \(state)") }
@@ -83,6 +94,8 @@ enum ScriptCommand: Equatable {
     case print
     case action(String)
     case expect(String)
+    case setting(String, String)
+    case snapshotTransition(String)
 }
 
 enum ScriptParser {
@@ -107,6 +120,11 @@ enum ScriptParser {
             case ("print", nil): command = .print
             case ("action", let name?): command = .action(name)
             case ("expect", let text?): command = .expect(text)
+            case ("snapshot-transition", let path?): command = .snapshotTransition(path)
+            case ("setting", let rest?):
+                let kv = rest.split(separator: " ", maxSplits: 1).map(String.init)
+                guard kv.count == 2 else { throw ScriptError.badLine(index + 1, line) }
+                command = .setting(kv[0], kv[1])
             default: throw ScriptError.badLine(index + 1, line)
             }
             commands.append((index + 1, command))

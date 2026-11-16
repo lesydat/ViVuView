@@ -1,0 +1,27 @@
+# M4: animated image change through the full-screen overlay, bounce at the end, rotation keys.
+setting transitionMilliseconds 1200
+open Tests/Fixtures/orientation-1.jpg
+expect-loaded
+wait 300
+key right
+expect pos=3/10
+expect transition=running
+expect alpha=0.0
+wait 400
+snapshot-transition build/smoke/m4-transition-mid.png
+wait 1200
+expect transition=idle
+expect alpha=1.0
+setting transitionMilliseconds 160
+key end
+wait 400
+expect pos=10/10
+key right
+expect pos=10/10
+wait 400
+expect transition=idle
+setting transition none
+key left
+expect transition=idle
+expect pos=9/10
+quit

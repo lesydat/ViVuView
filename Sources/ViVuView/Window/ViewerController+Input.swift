@@ -9,7 +9,12 @@ extension ViewerController {
 
     func keyDown(_ event: NSEvent) -> Bool {
         guard let command = KeyBindings.command(for: event, context: keyContext) else { return false }
-        perform(command)
+        // Holding a key browses without animation (docs/UI_SPEC.md §4).
+        switch command {
+        case .next: navigate(by: 1, animated: !event.isARepeat)
+        case .previous: navigate(by: -1, animated: !event.isARepeat)
+        default: perform(command)
+        }
         return true
     }
 
@@ -66,7 +71,8 @@ extension ViewerController {
 
     func scrollWheel(_ event: NSEvent) {
         if event.hasPreciseScrollingDeltas {
-            // Trackpad: two-finger scroll pans when zoomed (swipe navigation arrives with M4).
+            // Trackpad: swipe to change image at fit, pan when zoomed (ViewerController+Transition.swift).
+            if handleTrackpadScroll(event) { return }
             guard isZoomed else { return }
             let scale = metalView.backingScale
             pan(by: CGVector(dx: event.scrollingDeltaX * scale, dy: event.scrollingDeltaY * scale))
@@ -80,7 +86,12 @@ extension ViewerController {
     }
 
     func magnify(_ event: NSEvent) {
-        zoom(to: effectiveViewport.scale * (1 + event.magnification), anchor: viewPoint(event))
+        pinchGesture(event)
+    }
+
+    /// Three-finger swipe (when the system sends it): positive deltaX is a swipe to the left → next image.
+    func swipe(_ event: NSEvent) {
+        if event.deltaX > 0 { navigate(by: 1, animated: true) } else if event.deltaX < 0 { navigate(by: -1, animated: true) }
     }
 
     func smartMagnify(_ event: NSEvent) {
@@ -195,6 +206,9 @@ final class ViewerContentView: NSView {
     override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { controller?.scrollWheel(event) } }
     override func magnify(with event: NSEvent) { MainActor.assumeIsolated { controller?.magnify(event) } }
     override func smartMagnify(with event: NSEvent) { MainActor.assumeIsolated { controller?.smartMagnify(event) } }
+    override func rotate(with event: NSEvent) { MainActor.assumeIsolated { controller?.rotateGesture(event) } }
+    override func swipe(with event: NSEvent) { MainActor.assumeIsolated { controller?.swipe(event) } }
+    override func wantsScrollEventsForSwipeTracking(on axis: NSEvent.GestureAxis) -> Bool { true }
 
     @objc func performMenuCommand(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let command = Command(rawValue: raw) else { return }

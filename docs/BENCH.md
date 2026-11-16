@@ -15,3 +15,5 @@ Mỗi mốc ghi kết quả đo ở đây (TECH_SPEC mục 11.2). Mốc sau ch�
 | M3 | 2026-11-16 | như trên | M3 | Mở ảnh tính từ lúc khởi động tiến trình (JPEG 12MP / PSD 6MP / HEIC 15MP) | 245ms / 202ms / 723ms | — | — | Gồm cả thời gian khởi động app |
 | M3 | 2026-11-16 | như trên | M3 | Mở JPEG 200MP tính từ khởi động | 1011ms | — | — | Footprint 2,7GB do nạp trước các file khổng lồ cạnh nó qua ImageIO; xử lý ở M7–M8 |
 | M3 | 2026-11-16 | như trên | M3 | CPU khi đứng yên 10s với ảnh tĩnh | 0,03% | — | — | Mục tiêu < 1% |
+| M4 | 2026-11-16 | như trên | M4 | Next/prev đã preload (A2, hiệu ứng tắt khi đo) | 2,8ms | 10,5ms | 17,7ms | Không chậm hơn M3 quá 20%; footprint vòng 1 → 2: 782 → 787MB |
+| M4 | 2026-11-16 | như trên | M4 | Giữ phím 30Hz (C) | 3,1ms | 6,9ms | 8,9ms | 120/120 ảnh hiện |

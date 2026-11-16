@@ -21,11 +21,16 @@ final class MetalView: NSView {
 
     private var metalLayer: CAMetalLayer { layer as! CAMetalLayer }
     private var renderScheduled = false
-    private var displayLink: CADisplayLink?
+    private var animationTimer: Timer?
 
-    init(renderer: Renderer) {
+    /// Transparent views (the transition overlay) clear to nothing and let the desktop show through.
+    let transparent: Bool
+
+    init(renderer: Renderer, transparent: Bool = false) {
         self.renderer = renderer
+        self.transparent = transparent
         super.init(frame: .zero)
+        if transparent { clearColor = SIMD4(0, 0, 0, 0) }
         wantsLayer = true
         layerContentsRedrawPolicy = .duringViewResize
     }
@@ -39,14 +44,14 @@ final class MetalView: NSView {
         layer.pixelFormat = Renderer.pixelFormat
         layer.colorspace = CGColorSpace(name: CGColorSpace.displayP3)
         layer.framebufferOnly = true
-        layer.isOpaque = true
+        layer.isOpaque = !transparent
         layer.maximumDrawableCount = 3
-        layer.backgroundColor = NSColor.black.cgColor
+        layer.backgroundColor = transparent ? NSColor.clear.cgColor : NSColor.black.cgColor
         return layer
     }
 
     override var isFlipped: Bool { true }
-    override var isOpaque: Bool { true }
+    override var isOpaque: Bool { !transparent }
     override var acceptsFirstResponder: Bool { false }
 
     var drawableSize: CGSize { metalLayer.drawableSize }
@@ -116,21 +121,29 @@ final class MetalView: NSView {
         }
     }
 
-    /// Starts the display link; it stops by itself when `animationStep` returns false.
+    /// Starts driving animation frames; stops by itself when `animationStep` returns false.
+    /// A 120 Hz timer is used instead of CADisplayLink: in testing on macOS 27 neither the view's nor the
+    /// screen's display link delivered callbacks while the window was hidden or the app was launched from a
+    /// terminal. Presentation itself stays vsync-paced by CAMetalLayer.
     func startAnimating() {
-        guard displayLink == nil else { return }
-        let link = displayLink(target: self, selector: #selector(tick(_:)))
-        link.add(to: .main, forMode: .common)
-        displayLink = link
+        guard animationTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 120, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
+        tick()
     }
 
     func stopAnimating() {
-        displayLink?.invalidate()
-        displayLink = nil
+        animationTimer?.invalidate()
+        animationTimer = nil
     }
 
-    @objc private func tick(_ link: CADisplayLink) {
-        let keepGoing = animationStep?(link.targetTimestamp) ?? false
+    var isAnimating: Bool { animationTimer != nil }
+
+    private func tick() {
+        let keepGoing = animationStep?(CACurrentMediaTime()) ?? false
         renderNow(synchronously: false)
         if !keepGoing { stopAnimating() }
     }

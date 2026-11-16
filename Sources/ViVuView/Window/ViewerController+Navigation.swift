@@ -141,11 +141,6 @@ extension ViewerController {
         currentChanged()
     }
 
-    /// Hook for the end-of-folder bounce animation (M4).
-    func bounceAtEnd(direction: Int) {
-        NSSound.beep()
-    }
-
     /// The current index changed: show the best pixels we have, then plan decodes.
     func currentChanged() {
         guard let url = nav.currentURL else { return }

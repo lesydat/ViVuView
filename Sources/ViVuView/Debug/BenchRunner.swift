@@ -76,6 +76,8 @@ final class BenchRunner {
     }
 
     func run(arguments: [String]) async {
+        // Measure decode-and-show latency, not the deliberate transition animation.
+        viewer.settings.transition = .none
         if let folder = AppDelegate.value(after: "--bench-navigate", in: arguments) {
             let count = AppDelegate.value(after: "--count", in: arguments).flatMap(Int.init) ?? 300
             await navigate(folder: URL(fileURLWithPath: folder), count: count)

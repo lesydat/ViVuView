@@ -6,7 +6,37 @@ import ViVuCore
 /// Changes take effect immediately: views observe this object.
 @MainActor @Observable
 final class Settings {
-    static let shared = Settings(defaults: .standard)
+    /// Scripts and benchmarks run with a throwaway defaults domain so they never change the user's settings.
+    static let shared: Settings = {
+        let automated = CommandLine.arguments.contains { $0 == "--script" || $0.hasPrefix("--bench-") }
+        guard automated else { return Settings(defaults: .standard) }
+        let suite = "app.vivuview.ViVuView.automation"
+        UserDefaults.standard.removePersistentDomain(forName: suite)
+        return Settings(defaults: UserDefaults(suiteName: suite) ?? .standard)
+    }()
+
+    /// Sets an option by name (scripts): `setting transition fade`.
+    func set(_ key: String, _ value: String) throws {
+        switch key {
+        case "transition": transition = try parse(value)
+        case "transitionMilliseconds": transitionMilliseconds = Double(value) ?? transitionMilliseconds
+        case "renderUnit": renderUnit = try parse(value)
+        case "statusBar": statusBar = try parse(value)
+        case "wrapAround": wrapAround = value == "true"
+        case "openSize": openSize = try parse(value)
+        case "filmstrip": filmstrip = try parse(value)
+        case "keepZoom": keepZoom = value == "true"
+        case "preloadEachSide": preloadEachSide = Int(value) ?? preloadEachSide
+        case "background": background = try parse(value)
+        case "galleryColumnWidth": galleryColumnWidth = Double(value) ?? galleryColumnWidth
+        default: throw ScriptError.message("unknown setting \(key)")
+        }
+    }
+
+    private func parse<T: RawRepresentable>(_ value: String) throws -> T where T.RawValue == String {
+        guard let parsed = T(rawValue: value) else { throw ScriptError.message("bad value \(value)") }
+        return parsed
+    }
 
     enum OpenSize: String, CaseIterable { case fitMax100, alwaysFit, always100 }
     enum Background: String, CaseIterable { case black, darkGray, checkerboard }
