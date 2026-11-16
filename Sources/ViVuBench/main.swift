@@ -11,6 +11,8 @@ commands:
   version                         print the bench version
   decode <file>...                time meta / embedded preview / screen decode / full decode (ImageIO)
   huge <file> [--fit N]           fit-decode a huge PSB/PSD with the own reader and with ImageIO, cold and warm
+  test-fixtures [dir]             write the small committed fixtures (default Tests/Fixtures)
+  doc-types                       print CFBundleDocumentTypes (used by Scripts/bundle.sh)
   make-fixtures <dir> [--huge]    write test pictures (folder of JPEGs, 200 MP JPEG; --huge adds multi-GB PSB/TIFF)
 """
 
@@ -72,10 +74,10 @@ func decodeCommand(_ paths: [String]) throws {
         print("\(url.lastPathComponent)")
         let meta = try timed("meta") { try ImageIODecoder.meta(url) }
         print("  size \(meta.storedSize) (\(String(format: "%.1f", meta.storedSize.megapixels)) MP), \(meta.uti), orientation \(meta.orientation)")
-        let embedded = timed("stage 0: embedded preview") { ImageIODecoder.embeddedPreview(url) }
-        print("  embedded preview: \(embedded.map { "\($0.size)" } ?? "none")")
-        let screen = try timed("stage 1: screen decode (\(screenLongSide))") {
-            try ImageIODecoder.screenDecode(url, maxPixel: screenLongSide)
+        let thumb = try timed("thumbnail 640 (stage 0 source)") { try ImageIODecoder.thumbnail(url, maxPixel: 640) }
+        print("  thumbnail: \(thumb.size)")
+        let (screen, _) = try timed("stage 1: screen decode (\(screenLongSide))") {
+            try ImageIODecoder.screenDecode(url, screenLongSide: screenLongSide)
         }
         print("  screen decode: \(screen.size)")
         let (full, peak) = try measurePeak {
@@ -102,7 +104,7 @@ func hugeCommand(_ args: [String]) throws {
     try timed("own reader: 512 tile at level 2") { _ = try source.read(rect: PixelRect(x: 0, y: 0, width: 2048, height: 2048), level: 2) }
     for pass in ["first", "warm"] {
         let (buffer, peak) = try measurePeak {
-            try timed("ImageIO: screen decode \(fit) (\(pass))") { try ImageIODecoder.screenDecode(url, maxPixel: fit) }
+            try timed("ImageIO: screen decode \(fit) (\(pass))") { try ImageIODecoder.screenDecode(url, screenLongSide: fit).0 }
         }
         print("    → \(buffer.size), peak footprint \(MemoryFootprint.megabytes(peak))")
     }
@@ -168,6 +170,10 @@ do {
         try decodeCommand(Array(args.dropFirst()))
     case "huge":
         try hugeCommand(Array(args.dropFirst()))
+    case "test-fixtures":
+        try TestFixtures.write(to: URL(fileURLWithPath: args.count > 1 ? args[1] : "Tests/Fixtures"))
+    case "doc-types":
+        print(FormatCatalog.documentTypesPlistXML())
     case "make-fixtures":
         try makeFixtures(Array(args.dropFirst()))
     case nil, "help", "-h", "--help":

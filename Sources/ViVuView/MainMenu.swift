@@ -19,6 +19,14 @@ enum MainMenu {
         main.addItem(submenu: appMenu, title: "ViVuView")
 
         let fileMenu = NSMenu(title: String(localized: "Tệp"))
+        fileMenu.addItem(withTitle: String(localized: "Mở…"), action: #selector(AppDelegate.openDocument(_:)), keyEquivalent: "o")
+        let recent = NSMenuItem(title: String(localized: "Mở gần đây"), action: nil, keyEquivalent: "")
+        let recentMenu = NSMenu(title: recent.title)
+        recentMenu.addItem(withTitle: String(localized: "Xoá danh sách"),
+                           action: #selector(NSDocumentController.clearRecentDocuments(_:)), keyEquivalent: "")
+        recent.submenu = recentMenu
+        fileMenu.addItem(recent)
+        fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: String(localized: "Đóng"),
                          action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         main.addItem(submenu: fileMenu, title: fileMenu.title)

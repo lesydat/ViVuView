@@ -14,7 +14,10 @@ ARCH_FLAGS=(--arch arm64 --arch x86_64)
 
 echo "==> swift build (release, universal)"
 swift build -c release "${ARCH_FLAGS[@]}" --product "$APP_NAME"
+swift build -c release "${ARCH_FLAGS[@]}" --product vivu-bench
 BIN_DIR="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)"
+# CFBundleDocumentTypes comes from FormatCatalog, the same list the app and the Formats tab use.
+DOC_TYPES="$("$BIN_DIR/vivu-bench" doc-types)"
 
 APP="build/$APP_NAME.app"
 echo "==> assembling $APP"
@@ -22,7 +25,6 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 
-# CFBundleDocumentTypes is generated from FormatCatalog starting with milestone M1.
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -42,6 +44,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+    <key>CFBundleDocumentTypes</key>
+    $DOC_TYPES
 </dict>
 </plist>
 PLIST

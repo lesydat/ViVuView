@@ -247,3 +247,35 @@ extension Data {
         for i in 0..<width { append(UInt8(truncatingIfNeeded: value >> (8 * UInt64(i)))) }
     }
 }
+
+/// Small committed fixtures for tests and smoke scripts (`vivu-bench test-fixtures Tests/Fixtures`).
+public enum TestFixtures {
+    /// 300×200 stored picture: red block top-left, green block top-right, blue band at the bottom,
+    /// so every EXIF orientation looks different.
+    public static func orientationPattern() -> PixelBuffer {
+        let buffer = PixelBuffer(width: 300, height: 200)
+        for y in 0..<200 {
+            let row = buffer.data.advanced(by: y * buffer.bytesPerRow).assumingMemoryBound(to: UInt8.self)
+            for x in 0..<300 {
+                var (r, g, b): (UInt8, UInt8, UInt8) = (230, 230, 230)
+                if y < 80 && x < 100 { (r, g, b) = (220, 30, 30) }
+                if y < 80 && x >= 200 { (r, g, b) = (30, 200, 30) }
+                if y >= 150 { (r, g, b) = (30, 30, 220) }
+                row[x * 4] = b; row[x * 4 + 1] = g; row[x * 4 + 2] = r; row[x * 4 + 3] = 255
+            }
+        }
+        return buffer
+    }
+
+    public static func write(to dir: URL) throws {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let pattern = orientationPattern()
+        for o in UInt8(1)...8 {
+            try ImageWriter.write(pattern, to: dir.appendingPathComponent("orientation-\(o).jpg"), type: .jpeg,
+                                  quality: 0.95, orientation: o)
+        }
+        try Data("this is not an image".utf8).write(to: dir.appendingPathComponent("not-an-image.jpg"))
+        let small = ImageWriter.pattern(size: PixelSize(width: 640, height: 400), seed: 3)
+        try ImageWriter.write(small, to: dir.appendingPathComponent("pattern.png"), type: .png)
+    }
+}

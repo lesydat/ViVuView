@@ -1,101 +1,120 @@
 import AppKit
 
 /// Runs a UI script given with `--script <file>` (docs/TECH_SPEC.md §11.3).
-/// One command per line; blank lines and lines starting with `#` are ignored.
-/// Commands available so far: `wait <ms>`, `snapshot <path.png>`, `quit`.
-/// Later milestones add open, next, prev, zoom, fit, rotate, gallery, filmstrip, info, settings.
+/// One command per line; blank lines and lines starting with `#` are ignored; paths may be relative
+/// to the current directory. Any failure prints `script error:` and exits with status 1.
 @MainActor
 final class ScriptRunner {
-    enum Command: Equatable {
-        case wait(milliseconds: Int)
-        case snapshot(path: String)
-        case quit
-    }
-
     private let scriptURL: URL
-    private weak var window: NSWindow?
+    private let viewer: ViewerController
 
-    init(scriptURL: URL, window: NSWindow) {
+    init(scriptURL: URL, viewer: ViewerController) {
         self.scriptURL = scriptURL
-        self.window = window
+        self.viewer = viewer
     }
 
     func start() {
         Task { @MainActor in
             do {
                 let text = try String(contentsOf: scriptURL, encoding: .utf8)
-                let commands = try Self.parse(text)
-                for command in commands {
-                    try await run(command)
+                let commands = try ScriptParser.parse(text)
+                for (line, command) in commands {
+                    do { try await run(command) } catch { throw ScriptError.failed(line, "\(error)") }
                 }
-                // A script that does not end with `quit` leaves the app running.
             } catch {
-                Self.fail("\(error)")
+                FileHandle.standardError.write(Data("script error: \(error)\n".utf8))
+                exit(1)
             }
         }
     }
 
-    static func parse(_ text: String) throws -> [Command] {
-        var commands: [Command] = []
-        for (number, rawLine) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
-            if line.isEmpty || line.hasPrefix("#") { continue }
-            let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
-            let argument = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : nil
-            switch (parts[0], argument) {
-            case ("wait", let value?):
-                guard let ms = Int(value), ms >= 0 else { throw ScriptError.badLine(number + 1, line) }
-                commands.append(.wait(milliseconds: ms))
-            case ("snapshot", let path?):
-                commands.append(.snapshot(path: path))
-            case ("quit", nil):
-                commands.append(.quit)
-            default:
-                throw ScriptError.badLine(number + 1, line)
-            }
-        }
-        return commands
-    }
-
-    private func run(_ command: Command) async throws {
+    private func run(_ command: ScriptCommand) async throws {
         switch command {
         case .wait(let ms):
             try await Task.sleep(for: .milliseconds(ms))
         case .snapshot(let path):
-            try snapshot(to: URL(fileURLWithPath: path))
+            try await settle()
+            guard let rep = viewer.snapshot(), let png = rep.representation(using: .png, properties: [:]) else {
+                throw ScriptError.message("could not capture the window")
+            }
+            let url = URL(fileURLWithPath: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try png.write(to: url)
+            print("snapshot: \(url.path)")
         case .quit:
             NSApp.terminate(nil)
+        case .open(let path):
+            viewer.open(URL(fileURLWithPath: path))
+            await viewer.waitForLoad()
+        case .expectLoaded:
+            if let error = viewer.lastError { throw ScriptError.message("image failed: \(error)") }
+            guard viewer.meta != nil else { throw ScriptError.message("no image loaded") }
+        case .expectError:
+            guard viewer.lastError != nil else { throw ScriptError.message("expected a load error") }
+        case .key(let spec):
+            try viewer.performScriptKey(spec)
+            try await settle()
+        case .print:
+            print(viewer.scriptState())
         }
     }
 
-    /// Writes the window's content view to a PNG.
-    private func snapshot(to url: URL) throws {
-        guard let view = window?.contentView else { throw ScriptError.noWindow }
-        view.layoutSubtreeIfNeeded()
-        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw ScriptError.snapshotFailed }
-        view.cacheDisplay(in: view.bounds, to: rep)
-        guard let png = rep.representation(using: .png, properties: [:]) else { throw ScriptError.snapshotFailed }
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try png.write(to: url)
-        print("snapshot: \(url.path)")
+    /// Lets pending layout, decodes and renders finish.
+    private func settle() async throws {
+        await viewer.waitForLoad()
+        try await Task.sleep(for: .milliseconds(60))
     }
+}
 
-    private static func fail(_ message: String) {
-        FileHandle.standardError.write(Data("script error: \(message)\n".utf8))
-        exit(1)
+enum ScriptCommand: Equatable {
+    case wait(milliseconds: Int)
+    case snapshot(path: String)
+    case quit
+    case open(path: String)
+    case expectLoaded
+    case expectError
+    case key(String)
+    case print
+}
+
+enum ScriptParser {
+    static func parse(_ text: String) throws -> [(Int, ScriptCommand)] {
+        var commands: [(Int, ScriptCommand)] = []
+        for (index, rawLine) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty || line.hasPrefix("#") { continue }
+            let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
+            let argument = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : nil
+            let command: ScriptCommand
+            switch (parts[0], argument) {
+            case ("wait", let value?):
+                guard let ms = Int(value), ms >= 0 else { throw ScriptError.badLine(index + 1, line) }
+                command = .wait(milliseconds: ms)
+            case ("snapshot", let path?): command = .snapshot(path: path)
+            case ("quit", nil): command = .quit
+            case ("open", let path?): command = .open(path: path)
+            case ("expect-loaded", nil): command = .expectLoaded
+            case ("expect-error", nil): command = .expectError
+            case ("key", let spec?): command = .key(spec)
+            case ("print", nil): command = .print
+            default: throw ScriptError.badLine(index + 1, line)
+            }
+            commands.append((index + 1, command))
+        }
+        return commands
     }
 }
 
 enum ScriptError: Error, CustomStringConvertible {
     case badLine(Int, String)
-    case noWindow
-    case snapshotFailed
+    case failed(Int, String)
+    case message(String)
 
     var description: String {
         switch self {
         case .badLine(let number, let line): "line \(number): cannot understand \"\(line)\""
-        case .noWindow: "no window to snapshot"
-        case .snapshotFailed: "could not capture the window"
+        case .failed(let number, let why): "line \(number): \(why)"
+        case .message(let text): text
         }
     }
 }
