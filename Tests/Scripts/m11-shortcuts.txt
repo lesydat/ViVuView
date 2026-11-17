@@ -1,0 +1,15 @@
+# Shortcut sheet (docs/UI_SPEC.md §6.1): ? and ⌘/ toggle it, the table comes from KeyBindings.
+open Tests/Fixtures/pattern.png
+expect-loaded
+expect shortcuts=false
+action shortcuts-text
+key ?
+expect shortcuts=true
+snapshot-window shortcuts build/smoke/m11-shortcuts.png
+key ?
+expect shortcuts=false
+action showShortcuts
+expect shortcuts=true
+action showShortcuts
+expect shortcuts=false
+quit

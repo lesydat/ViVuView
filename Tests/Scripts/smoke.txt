@@ -1,0 +1,11 @@
+# Smoke test: run after every milestone (see CLAUDE.md). Paths are relative to the repo root.
+wait 200
+snapshot build/smoke/empty.png
+open Tests/Fixtures/orientation-6.jpg
+expect-loaded
+print
+snapshot build/smoke/orientation-6.png
+open Tests/Fixtures/not-an-image.jpg
+expect-error
+snapshot build/smoke/error.png
+quit

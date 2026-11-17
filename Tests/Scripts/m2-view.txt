@@ -1,0 +1,51 @@
+# M2: zoom, pan, rotate, chrome. pattern.png is 640×400.
+open Tests/Fixtures/pattern.png
+expect-loaded
+expect window=640x400
+expect zoom=Vừa 100%
+key +
+expect zoom=125%
+expect window=800x500
+key right
+expect image=zz-animated.gif
+key left
+expect image=pattern.png
+key +
+key 0
+key 0
+expect zoom=Vừa 100%
+key backslash
+expect fit=true
+key ]
+expect turns=1
+expect window=400x640
+key [
+expect turns=0
+key cmd+right
+action hover
+expect status=true
+snapshot build/smoke/m2-hover.png
+action unhover
+wait 300
+expect status=false
+# Click-to-pin is off by default (UI_SPEC §2.3).
+action click
+wait 300
+expect status=false
+setting clickPinsStatusBar true
+action click
+wait 300
+expect status=true
+action click
+wait 300
+expect status=false
+# ⌘ + wheel zooms (UI_SPEC §5); a plain wheel at fit does nothing.
+action scroll:-2
+expect fit=true
+action scroll:cmd:3
+print
+expect fit=false
+setting clickPinsStatusBar false
+action menu
+print
+quit

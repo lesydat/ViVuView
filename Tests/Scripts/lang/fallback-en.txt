@@ -1,0 +1,5 @@
+# Run with -AppleLanguages "(pl)": a language the app does not ship falls back to English (docs/UI_SPEC.md §12).
+open Tests/Fixtures/pattern.png
+expect-loaded
+expect zoom=Fit
+quit

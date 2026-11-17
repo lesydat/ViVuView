@@ -1,0 +1,7 @@
+# Run with -AppleLanguages "(de)": the German table is used.
+open Tests/Fixtures/pattern.png
+expect-loaded
+expect zoom=Einpassen
+action settings:general
+snapshot-window settings build/smoke/lang-de-settings.png
+quit

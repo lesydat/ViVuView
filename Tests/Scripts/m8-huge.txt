@@ -1,0 +1,23 @@
+# M8: huge TIFF and PSB through the own readers (96 MP each, generated into build/ at run time).
+make-fixture build/fixtures/m8/huge.tif 12000x8000
+make-fixture build/fixtures/m8/huge.psb 12000x8000
+open build/fixtures/m8/huge.psb
+expect-loaded
+expect pos=1/2
+wait 500
+expect detail=tiles(
+key 0
+wait 800
+expect zoom=100%
+snapshot build/smoke/m8-psb-100.png
+key cmd+right
+expect pos=2/2
+expect-loaded
+wait 500
+expect detail=tiles(
+key 0
+wait 800
+snapshot build/smoke/m8-tiff-100.png
+expect image=huge.tif
+print
+quit

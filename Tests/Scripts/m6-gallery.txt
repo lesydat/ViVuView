@@ -1,0 +1,30 @@
+# M6: masonry gallery in the same window.
+open Tests/Fixtures/orientation-2.jpg
+expect-loaded
+key g
+wait 400
+expect gallery=open
+expect sel=3
+expect filmstrip=hidden
+snapshot build/smoke/m6-gallery.png
+key right
+expect sel=4
+key home
+expect sel=1
+key end
+expect sel=11
+key escape
+wait 400
+expect gallery=closed
+expect pos=3/11
+action toggleGallery
+wait 400
+key right
+key right
+key enter
+wait 400
+expect gallery=closed
+expect pos=5/11
+expect image=orientation-4.jpg
+expect window=320x240
+quit

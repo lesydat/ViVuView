@@ -1,0 +1,28 @@
+# M9: info panel (I) and the settings window.
+open Tests/Fixtures/orientation-6.jpg
+expect-loaded
+expect info=closed
+key i
+expect info=open
+snapshot-window info build/smoke/m9-info.png
+key escape
+expect info=closed
+setting background lightGray
+wait 100
+snapshot build/smoke/m9-background-lightgray.png
+setting background gray
+wait 100
+snapshot build/smoke/m9-background-gray.png
+setting background translucent
+wait 100
+snapshot build/smoke/m9-background-translucent.png
+setting background checkerboard
+open Tests/Fixtures/pattern.png
+expect-loaded
+action settings:display
+snapshot-window settings build/smoke/m9-settings-display.png
+action settings:formats
+snapshot-window settings build/smoke/m9-settings-formats.png
+action settings:performance
+snapshot-window settings build/smoke/m9-settings-performance.png
+quit
