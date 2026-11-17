@@ -39,7 +39,7 @@ extension ViewerController {
                 infoPanelState.overlay = overlay
             }
             let b = content.bounds
-            let top = galleryOpen ? Self.galleryHeaderHeight : 0
+            let top = galleryOpen ? galleryHeaderHeight : 0
             infoPanelState.overlay?.frame = CGRect(x: b.width - InfoPanelWindow.width, y: 0,
                                                    width: InfoPanelWindow.width, height: b.height - top)
             infoPanelState.overlay?.isHidden = false

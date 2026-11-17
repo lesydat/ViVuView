@@ -29,9 +29,16 @@ extension ViewerController {
         if galleryOpen { return }
         mouseDownEvent = event
         dragged = false
+        // A click that brings the window forward is not a pin (docs/UI_SPEC.md §2.3).
+        clickActivatesWindow = content.firstMouseTimestamp == event.timestamp
         if event.clickCount == 2 {
             pendingClick?.cancel()
-            toggleFitAndActualSize(at: viewPoint(event))
+            if currentURL == nil {
+                // Empty window: double-click opens a file (docs/UI_SPEC.md §11).
+                NSApp.sendAction(#selector(AppDelegate.openDocument(_:)), to: nil, from: content)
+            } else {
+                toggleFitAndActualSize(at: viewPoint(event))
+            }
         }
     }
 
@@ -54,7 +61,7 @@ extension ViewerController {
     func mouseUp(_ event: NSEvent) {
         if galleryOpen { galleryMouseUp(event); return }
         defer { mouseDownEvent = nil }
-        guard !dragged, event.clickCount == 1 else { return }
+        guard !dragged, event.clickCount == 1, !clickActivatesWindow else { return }
         // A single click pins the status bar, unless it turns out to be a double click.
         pendingClick?.cancel()
         pendingClick = Task { @MainActor [weak self] in
@@ -74,18 +81,25 @@ extension ViewerController {
 
     func scrollWheel(_ event: NSEvent) {
         if galleryOpen { galleryScroll(event); return }
+        // ⌘ (or ⌃) + scroll zooms around the pointer, with a wheel or a trackpad, whatever the wheel setting.
+        if !event.modifierFlags.intersection([.command, .control]).isEmpty {
+            // A wheel notch is about 1; a trackpad reports points, about 10 for the same feel.
+            let steps = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY / 10 : event.scrollingDeltaY
+            guard steps != 0, meta != nil else { return }
+            zoom(to: effectiveViewport.scale * pow(1.1, steps), anchor: viewPoint(event))
+            return
+        }
         if event.hasPreciseScrollingDeltas {
             // Trackpad: swipe to change image at fit, pan when zoomed (ViewerController+Transition.swift).
             if handleTrackpadScroll(event) { return }
             guard isZoomed else { return }
             let scale = metalView.backingScale
             pan(by: CGVector(dx: event.scrollingDeltaX * scale, dy: event.scrollingDeltaY * scale))
-        } else if settings.wheelAction == .zoom || isZoomed {
-            let notches = event.scrollingDeltaY
-            guard notches != 0 else { return }
-            zoom(to: effectiveViewport.scale * pow(1.1, notches), anchor: viewPoint(event))
-        } else {
-            perform(event.scrollingDeltaY > 0 ? .previous : .next)
+        } else if isZoomed {
+            // Mouse wheel: scrolls the picture (⇧ for sideways); ⌘ + wheel zooms (above). At fit there is
+            // nothing to scroll (docs/UI_SPEC.md §5).
+            let line = 40 * metalView.backingScale
+            pan(by: CGVector(dx: event.scrollingDeltaX * line, dy: event.scrollingDeltaY * line))
         }
     }
 
@@ -108,8 +122,17 @@ extension ViewerController {
 
     var statusBarShown: Bool { !statusBar.isHidden && statusBar.alphaValue > 0 }
 
+    /// `event` nil = forced (scripts). Real events only count when the pointer actually moved: resizing or
+    /// recentering the window on an image change sends entered/moved events under a still pointer, and the
+    /// chrome must not pop up then (docs/UI_SPEC.md §2.2).
     func mouseMoved(_ event: NSEvent? = nil) {
         if galleryOpen { if let event { galleryMouseMoved(event) }; return }
+        if event != nil {
+            if ignoresRealPointer { return }
+            let pointer = NSEvent.mouseLocation
+            guard pointer != lastPointer else { return }
+            lastPointer = pointer
+        }
         showChrome()
         chromeHideTask?.cancel()
         chromeHideTask = Task { @MainActor [weak self] in
@@ -119,7 +142,8 @@ extension ViewerController {
         }
     }
 
-    func mouseExited() {
+    func mouseExited(real: Bool = false) {
+        if real && ignoresRealPointer { return }
         chromeHideTask?.cancel()
         hideChrome()
     }
@@ -143,7 +167,7 @@ extension ViewerController {
     }
 
     func toggleStatusPin() {
-        guard settings.statusBar != .never else { return }
+        guard settings.statusBar == .onHover, settings.clickPinsStatusBar else { return }
         statusPinned.toggle()
         updateStatusVisibility()
     }
@@ -155,14 +179,20 @@ extension ViewerController {
         case .always: show = true
         case .onHover: show = chromeVisible || statusPinned
         }
+        statusBar.pinned = statusPinned && settings.statusBar == .onHover
+        // The gallery has its own header; the bar stays away even when pinned.
+        if galleryOpen { setVisible(statusBar, false, animated: false); return }
         setVisible(statusBar, show && (meta != nil || lastError != nil || isLoading), animated: chromeVisible || statusPinned)
     }
 
     func layoutOverlays() {
         let b = content.bounds
-        titleBar.frame = CGRect(x: 0, y: b.height - TitleBarOverlay.height, width: b.width, height: TitleBarOverlay.height)
-        statusBar.frame = CGRect(x: 0, y: 0, width: b.width, height: StatusBar.height)
-        zoomBadge.frame = CGRect(x: b.width - 84, y: StatusBar.height + 8, width: 72, height: 26)
+        let barHeight = window.titleBarHeight
+        titleBar.frame = CGRect(x: 0, y: b.height - barHeight, width: b.width, height: barHeight)
+        let inset = filmstripBottomInset
+        metalView.frame = CGRect(x: 0, y: inset, width: b.width, height: b.height - inset)
+        statusBar.frame = CGRect(x: 0, y: inset, width: b.width, height: StatusBar.height)
+        zoomBadge.frame = CGRect(x: b.width - 84, y: inset + StatusBar.height + 8, width: 72, height: 26)
     }
 }
 
@@ -188,7 +218,12 @@ final class ViewerContentView: NSView {
     }
 
     override var acceptsFirstResponder: Bool { true }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    /// The mouse-down that activated the window (AppKit asks only for clicks in an inactive window).
+    var firstMouseTimestamp: TimeInterval?
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        firstMouseTimestamp = event?.timestamp
+        return true
+    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -204,18 +239,35 @@ final class ViewerContentView: NSView {
         if !handled { super.keyDown(with: event) }
     }
 
-    override func mouseDown(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseDown(event) } }
+    override func mouseDown(with event: NSEvent) {
+        // Control-click is a right click.
+        if event.modifierFlags.contains(.control) { rightMouseDown(with: event); return }
+        MainActor.assumeIsolated { controller?.mouseDown(event) }
+    }
     override func mouseDragged(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseDragged(event) } }
     override func mouseUp(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseUp(event) } }
     override func mouseMoved(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseMoved(event) } }
-    override func mouseEntered(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseMoved() } }
-    override func mouseExited(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseExited() } }
+    override func mouseEntered(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseMoved(event) } }
+    override func mouseExited(with event: NSEvent) { MainActor.assumeIsolated { controller?.mouseExited(real: true) } }
     override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { controller?.scrollWheel(event) } }
     override func magnify(with event: NSEvent) { MainActor.assumeIsolated { controller?.magnify(event) } }
     override func smartMagnify(with event: NSEvent) { MainActor.assumeIsolated { controller?.smartMagnify(event) } }
     override func rotate(with event: NSEvent) { MainActor.assumeIsolated { controller?.rotateGesture(event) } }
     override func swipe(with event: NSEvent) { MainActor.assumeIsolated { controller?.swipe(event) } }
     override func wantsScrollEventsForSwipeTracking(on axis: NSEvent.GestureAxis) -> Bool { true }
+
+    // Built and shown inside the main-actor block: NSMenu is not Sendable, so `menu(for:)` cannot return it.
+    override func rightMouseDown(with event: NSEvent) {
+        MainActor.assumeIsolated {
+            guard let menu = controller?.contextMenu() else { return }
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        }
+    }
+
+    @objc func openWithApp(_ sender: NSMenuItem) {
+        let app = sender.representedObject as? URL
+        MainActor.assumeIsolated { controller?.openCurrent(with: app) }
+    }
 
     @objc func performMenuCommand(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let command = Command(rawValue: raw) else { return }

@@ -56,6 +56,7 @@ extension ViewerController {
         let url = url.absoluteURL
         let folder = url.deletingLastPathComponent()
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        centerOnNextResize = true
         if folder != nav.folder {
             nav.folder = folder
             nav.slots.values.forEach { $0.ticket?.cancel() }
@@ -156,7 +157,7 @@ extension ViewerController {
         if animation.url != nil && animation.url != url { animation.reset() }
         info = nil
         infoTicket?.cancel()
-        window.title = url.lastPathComponent
+        updateWindowTitle()
         window.representedURL = url
         titleBar.title = url.lastPathComponent
         let slot = slot(for: url)

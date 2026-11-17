@@ -1,0 +1,27 @@
+# SVG: drawn through NSImage, sharp at any zoom (docs/TECH_SPEC.md §4.5). The window opens centered.
+open Tests/Fixtures/vector/shapes.svg
+expect-loaded
+expect size=300×200
+expect pos=2/2
+snapshot build/smoke/m11-svg-fit.png
+expect detail=vector(5120)
+key +
+key +
+key +
+key +
+key +
+key +
+key +
+key +
+key +
+key +
+key +
+key +
+wait 2500
+expect detail=vector(8192)
+snapshot build/smoke/m11-svg-zoom.png
+key cmd+left
+expect-loaded
+expect image=logo.svg
+snapshot build/smoke/m11-svg-logo.png
+quit

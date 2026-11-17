@@ -27,5 +27,11 @@ public struct ImageMeta: Hashable, Sendable {
         self.modificationDate = modificationDate
     }
 
-    public var isAnimated: Bool { frameCount > 1 }
+    /// Types whose extra frames are an animation. Other files with several images are not: ICO/ICNS hold one
+    /// picture at several sizes, TIFF pages, HEIC depth or burst images.
+    public static let animationTypes: Set<String> = [
+        "com.compuserve.gif", "public.png", "org.webmproject.webp", "public.heics", "public.avis", "public.avif",
+    ]
+
+    public var isAnimated: Bool { frameCount > 1 && Self.animationTypes.contains(uti) }
 }

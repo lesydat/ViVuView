@@ -82,10 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var settingsController: SettingsWindowController { settingsWindow }
 
     @objc func showShortcuts(_ sender: Any?) {
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Phím tắt")
-        alert.informativeText = MainMenu.shortcutsText
-        alert.runModal()
+        ShortcutsPanel.shared.toggle(over: viewer?.window)
     }
 
     @objc func openDocument(_ sender: Any?) {

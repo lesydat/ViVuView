@@ -12,6 +12,8 @@ final class ScriptRunner {
     init(scriptURL: URL, viewer: ViewerController) {
         self.scriptURL = scriptURL
         self.viewer = viewer
+        // Hover comes only from `action hover/unhover`: wherever the real pointer is must not change results.
+        viewer.ignoresRealPointer = true
     }
 
     func start() {
@@ -89,9 +91,12 @@ final class ScriptRunner {
             switch name {
             case "info": target = viewer.infoPanelState.window
             case "settings": target = (NSApp.delegate as? AppDelegate)?.settingsController.window
+            case "main": target = viewer.window
+            case "shortcuts": target = ShortcutsPanel.shared.window
             default: throw ScriptError.message("unknown window \(name)")
             }
-            guard let window = target, window.isVisible, let view = window.contentView,
+            // The frame view also draws the title bar, toolbar and traffic lights.
+            guard let window = target, window.isVisible, let view = window.contentView?.superview ?? window.contentView,
                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
                 throw ScriptError.message("\(name) window not shown")
             }

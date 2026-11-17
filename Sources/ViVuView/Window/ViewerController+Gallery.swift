@@ -24,7 +24,8 @@ final class GalleryState {
 
 extension ViewerController {
     static let galleryAnimation = 0.22
-    static let galleryHeaderHeight = 28.0
+    /// Same height as the main window's title bar, with the traffic lights in it (docs/UI_SPEC.md §8).
+    var galleryHeaderHeight: Double { Double(window.titleBarHeight) }
 
     var galleryOpen: Bool { gallery.isOpen }
 
@@ -37,7 +38,7 @@ extension ViewerController {
         let oldY = anchor.flatMap { a in gallery.layout.map { Double($0.frames[a].minY) - gallery.scroll } }
         let aspects = nav.entries.map { thumbs.aspect(for: $0.url) }
         let layout = MasonryLayout(aspects: aspects, width: galleryViewSize.width, targetColumnWidth: settings.galleryColumnWidth,
-                                   top: Self.galleryHeaderHeight)
+                                   top: galleryHeaderHeight)
         gallery.layout = layout
         if let anchor, let oldY, anchor < layout.count {
             gallery.scroll = layout.clampScroll(Double(layout.frames[anchor].minY) - oldY, height: galleryViewSize.height)
@@ -67,6 +68,7 @@ extension ViewerController {
         hideChrome()
         setVisible(statusBar, false, animated: false)
         showGalleryHeader(true)
+        window.setTrafficLightsHidden(false)
         defer { layoutInfoPanel() }
         if !isFullScreen {
             gallery.savedFrame = window.frame
@@ -110,6 +112,7 @@ extension ViewerController {
         gallery.animation = nil
         thumbs.want([], client: "gallery")
         showGalleryHeader(false)
+        window.setTrafficLightsHidden(!chromeVisible)
         strip.suppressed = false
         if !isFullScreen, let frame = gallery.savedFrame { window.setFrame(frame, display: false, animate: false) }
         if index != nav.index {
@@ -189,8 +192,14 @@ extension ViewerController {
         for i in layout.visible(y0: gallery.scroll, y1: gallery.scroll + height) {
             if animation?.index == i { continue }   // drawn separately below
             let r = cellRectInView(i)
+            let selected = i == gallery.selected && animation == nil
             quads.append(cellQuad(i, rect: r, scale: scale, viewSize: viewSize, alpha: cellAlpha,
-                                  selected: i == gallery.selected && animation == nil, hovered: i == gallery.hovered))
+                                  selected: selected, hovered: i == gallery.hovered))
+            if selected {
+                let px = CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale)
+                quads.append(SelectionRing.quad(around: px, cornerRadius: 4, scale: scale, viewSize: viewSize,
+                                                alpha: Float(cellAlpha)))
+            }
         }
         if let a = animation {
             let r = Transition.lerp(a.from, a.to, p)
@@ -211,8 +220,9 @@ extension ViewerController {
                           selected: Bool, hovered: Bool) -> Quad {
         let px = CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale)
         let a = Float(alpha)
-        let border: Float = selected ? Float(2 * scale) : hovered ? Float(1 * scale) : 0
-        let borderColor = selected ? SIMD4<Float>(a, a, a, a) : SIMD4<Float>(0.6, 0.6, 0.6, 0.6) * a
+        // The selected cell's mark is the ring drawn around it (SelectionRing); hover keeps a faint inner line.
+        let border: Float = hovered && !selected ? Float(1 * scale) : 0
+        let borderColor = SIMD4<Float>(0.6, 0.6, 0.6, 0.6) * a
         if let tex = thumbs.texture(for: galleryURL(i)) {
             return Quad.placed(texture: tex.texture, center: CGPoint(x: px.midX, y: px.midY), size: px.size, viewSize: viewSize,
                                uvRect: cropUV(tex, aspect: r.width / max(r.height, 1)), color: SIMD4(a, a, a, a),
@@ -231,11 +241,18 @@ extension ViewerController {
         return CGRect(x: 0, y: 0, width: 1, height: 1)
     }
 
+    /// Visible gallery cells that have their thumbnail, and all visible cells (scripts: `action thumbs`).
+    func galleryThumbnailCoverage() -> (shown: Int, visible: Int) {
+        guard gallery.isOpen, let layout = gallery.layout else { return (0, 0) }
+        let cells = layout.visible(y0: gallery.scroll, y1: gallery.scroll + galleryViewSize.height)
+        return (cells.filter { thumbs.texture(for: galleryURL($0)) != nil }.count, cells.count)
+    }
+
     func requestGalleryThumbnails() {
         guard gallery.isOpen, let layout = gallery.layout else { return }
         let h = galleryViewSize.height
         let middle = gallery.scroll + h / 2
-        let cells = layout.visible(y0: gallery.scroll - h, y1: gallery.scroll + 2 * h)
+        let cells = layout.visible(y0: gallery.scroll - h / 2, y1: gallery.scroll + 1.5 * h)
             .sorted { abs(Double(layout.frames[$0].midY) - middle) < abs(Double(layout.frames[$1].midY) - middle) }
         thumbs.want(cells.map(galleryURL), client: "gallery")
     }
@@ -266,6 +283,7 @@ extension ViewerController {
             if cmd && (chars == "+" || chars == "=") { changeColumnWidth(by: 1.25); return true }
             if cmd && chars == "-" { changeColumnWidth(by: 0.8); return true }
             if cmd { return false }
+            if chars == "?" && gallery.typeahead.isEmpty { perform(.showShortcuts); return true }
             if !cmd && (chars == "g" || chars == "G") && gallery.typeahead.isEmpty { closeGallery(opening: gallery.openedFrom); return true }
             typeahead(chars)
         }
@@ -276,7 +294,7 @@ extension ViewerController {
         guard let layout = gallery.layout, layout.count > 0 else { return }
         gallery.selected = min(max(i, 0), layout.count - 1)
         gallery.scroll = layout.scrollToReveal(gallery.selected, scroll: gallery.scroll, height: galleryViewSize.height,
-                                               topInset: Self.galleryHeaderHeight)
+                                               topInset: galleryHeaderHeight)
         updateGalleryHeader()
         requestGalleryThumbnails()
         metalView.setNeedsRender()
@@ -284,7 +302,7 @@ extension ViewerController {
 
     private func pageGallery(down: Bool) {
         guard let layout = gallery.layout else { return }
-        let h = galleryViewSize.height - Self.galleryHeaderHeight
+        let h = galleryViewSize.height - galleryHeaderHeight
         gallery.scroll = layout.clampScroll(gallery.scroll + (down ? h : -h), height: galleryViewSize.height)
         let f = layout.frames[gallery.selected]
         let probe = CGPoint(x: f.midX, y: gallery.scroll + galleryViewSize.height / 2)
@@ -377,7 +395,7 @@ extension ViewerController {
 
     private func layoutGalleryHeader() {
         let b = content.bounds
-        gallery.header?.frame = CGRect(x: 0, y: b.height - Self.galleryHeaderHeight, width: b.width, height: Self.galleryHeaderHeight)
+        gallery.header?.frame = CGRect(x: 0, y: b.height - galleryHeaderHeight, width: b.width, height: galleryHeaderHeight)
     }
 
     func updateGalleryHeader() {
@@ -402,29 +420,37 @@ final class GalleryHeader: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        label.font = .systemFont(ofSize: 12, weight: .medium)
-        label.textColor = NSColor(white: 1, alpha: 0.9)
+        // Same type and layout as the viewer's title bar (TitleBarOverlay): centered title, buttons on the right.
+        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.textColor = NSColor(white: 1, alpha: 0.92)
+        label.alignment = .center
         label.lineBreakMode = .byTruncatingMiddle
         label.translatesAutoresizingMaskIntoConstraints = false
-        let smaller = NSButton(image: NSImage(systemSymbolName: "minus", accessibilityDescription: nil) ?? NSImage(),
-                               target: self, action: #selector(smallerPressed))
-        let bigger = NSButton(image: NSImage(systemSymbolName: "plus", accessibilityDescription: nil) ?? NSImage(),
-                              target: self, action: #selector(biggerPressed))
+        // Circled symbols at the title bar buttons' size: a bare "−" was too small to aim at.
+        let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+        func symbol(_ name: String) -> NSImage {
+            NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config) ?? NSImage()
+        }
+        let smaller = NSButton(image: symbol("minus.circle"), target: self, action: #selector(smallerPressed))
+        let bigger = NSButton(image: symbol("plus.circle"), target: self, action: #selector(biggerPressed))
         for b in [smaller, bigger] {
             b.isBordered = false
             b.contentTintColor = NSColor(white: 1, alpha: 0.85)
             b.toolTip = String(localized: "Cỡ ô (⌘− / ⌘+, pinch)")
+            b.widthAnchor.constraint(equalToConstant: 24).isActive = true
         }
         let buttons = NSStackView(views: [smaller, bigger])
+        buttons.spacing = 4
         buttons.translatesAutoresizingMaskIntoConstraints = false
         let holder = NSView()
         holder.addSubview(label)
         holder.addSubview(buttons)
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: holder.leadingAnchor, constant: 80),
+            label.centerXAnchor.constraint(equalTo: holder.centerXAnchor),
             label.centerYAnchor.constraint(equalTo: holder.centerYAnchor),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: buttons.leadingAnchor, constant: -12),
-            buttons.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -10),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: holder.leadingAnchor, constant: 96),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: buttons.leadingAnchor, constant: -8),
+            buttons.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -8),
             buttons.centerYAnchor.constraint(equalTo: holder.centerYAnchor),
         ])
         let background = OverlayBackground.make(content: holder)
@@ -439,5 +465,7 @@ final class GalleryHeader: NSView {
     @objc private func smallerPressed() { onSize?(false) }
     @objc private func biggerPressed() { onSize?(true) }
 
-    override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 { window?.performZoom(nil) } else { window?.performDrag(with: event) }
+    }
 }

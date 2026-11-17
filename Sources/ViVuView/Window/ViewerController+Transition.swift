@@ -102,6 +102,7 @@ extension ViewerController {
             // Recompute the old rect now that the overlay covers this screen.
             let transition = Transition(style: style, direction: direction, travel: travel,
                                         old: currentTransitionImage(inMainView: false, overlay: overlay), inMainView: false)
+            transition.cornerRadius = Float(Tuning.windowCornerRadius * scale)
             fx.transition = transition
             overlay.show(on: screen, above: window)
             // The overlay shows exactly the same picture; hide the window under it.

@@ -7,6 +7,15 @@ expect info=open
 snapshot-window info build/smoke/m9-info.png
 key escape
 expect info=closed
+setting background lightGray
+wait 100
+snapshot build/smoke/m9-background-lightgray.png
+setting background gray
+wait 100
+snapshot build/smoke/m9-background-gray.png
+setting background translucent
+wait 100
+snapshot build/smoke/m9-background-translucent.png
 setting background checkerboard
 open Tests/Fixtures/pattern.png
 expect-loaded

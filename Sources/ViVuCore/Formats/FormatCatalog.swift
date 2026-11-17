@@ -24,6 +24,7 @@ public enum FormatCatalog {
         .init(id: "avif", name: "AVIF", group: .common, utis: ["public.avif"], extensions: ["avif", "avifs"]),
         .init(id: "bmp", name: "BMP", group: .common, utis: ["com.microsoft.bmp"], extensions: ["bmp"]),
         .init(id: "jxl", name: "JPEG XL", group: .common, utis: ["public.jpeg-xl"], extensions: ["jxl"]),
+        .init(id: "svg", name: "SVG", group: .common, utis: ["public.svg-image"], extensions: ["svg"]),
         .init(id: "ico", name: "ICO / ICNS", group: .common, utis: ["com.microsoft.ico", "com.apple.icns"], extensions: ["ico", "icns"]),
         .init(id: "canon", name: "Canon", group: .raw, utis: ["com.canon.cr2-raw-image", "com.canon.cr3-raw-image", "com.canon.crw-raw-image"], extensions: ["cr2", "cr3", "crw"]),
         .init(id: "nikon", name: "Nikon", group: .raw, utis: ["com.nikon.raw-image", "com.nikon.nrw-raw-image"], extensions: ["nef", "nrw"]),

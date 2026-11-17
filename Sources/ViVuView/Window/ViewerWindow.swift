@@ -19,12 +19,41 @@ final class ViewerWindow: NSWindow {
         contentMinSize = Self.minimumSize
         collectionBehavior = [.fullScreenPrimary]
         tabbingMode = .disallowed
+        // An empty toolbar gives the current system title bar: traffic lights inset from the corner instead of
+        // the title-bar-only layout. Compact keeps the bar low (40pt on macOS 27, buttons centered in it); it draws
+        // nothing and clicks under it still reach the content view. Kept in full screen too: hiding and showing it
+        // around full screen left the bar at a different height afterwards.
+        let toolbar = NSToolbar(identifier: "ViVuView.main")
+        toolbar.allowsUserCustomization = false
+        self.toolbar = toolbar
+        toolbarStyle = .unifiedCompact
+        titlebarSeparatorStyle = .none
         // The traffic lights appear with the hover title bar (M2); hidden until then.
         setTrafficLightsHidden(true)
-        center()
+        centerOnScreen()
     }
 
+    /// Exactly in the middle of the screen's visible area (`NSWindow.center()` puts it above the middle).
+    func centerOnScreen() {
+        guard let area = (screen ?? NSScreen.main)?.visibleFrame else { center(); return }
+        setFrameOrigin(NSPoint(x: (area.midX - frame.width / 2).rounded(), y: (area.midY - frame.height / 2).rounded()))
+    }
+
+    /// Height of the hover title bar = the system title bar with the compact toolbar (traffic lights centered in it).
+    /// Measured while windowed; in full screen the last windowed value is kept.
+    private var lastTitleBarHeight: CGFloat = 0
+    var titleBarHeight: CGFloat {
+        if !styleMask.contains(.fullScreen) {
+            let measured = frame.height - contentLayoutRect.height
+            if measured >= TitleBarOverlay.minimumHeight { lastTitleBarHeight = measured.rounded() }
+        }
+        return max(TitleBarOverlay.minimumHeight, lastTitleBarHeight)
+    }
+
+    /// Hidden with the hover chrome while windowed. In full screen the system shows the title bar when the pointer
+    /// reaches the top of the screen, so the buttons stay visible there.
     func setTrafficLightsHidden(_ hidden: Bool) {
+        let hidden = hidden && !styleMask.contains(.fullScreen)
         for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             standardWindowButton(kind)?.animator().alphaValue = hidden ? 0 : 1
         }
@@ -34,9 +63,14 @@ final class ViewerWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 }
 
-/// Black view with a centered message: the "drop an image here" hint or an error.
+/// Centered message over the background: the "drop an image here" hint or an error.
 final class MessageView: NSView {
     private let label = NSTextField(labelWithString: "")
+
+    /// Dark text on the light gray background, light text otherwise.
+    var onLightBackground = false {
+        didSet { label.textColor = NSColor(white: onLightBackground ? 0 : 1, alpha: onLightBackground ? 0.55 : 0.6) }
+    }
 
     var message: String {
         get { label.stringValue }

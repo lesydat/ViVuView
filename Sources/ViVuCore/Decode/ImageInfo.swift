@@ -60,6 +60,12 @@ public struct ImageInfo: Sendable, Equatable {
     }
 
     public static func read(_ url: URL) throws -> ImageInfo {
+        if VectorImage.isVector(url) {
+            let meta = try VectorImage.meta(url)
+            return ImageInfo(url: url, pixelSize: meta.orientedSize, fileSize: meta.fileSize,
+                             typeName: UTType(meta.uti)?.localizedDescription ?? "SVG", uti: meta.uti,
+                             dateModified: meta.modificationDate, frameCount: 1)
+        }
         let source = try ImageIODecoder.source(url)
         let meta = try ImageIODecoder.meta(source: source, url: url)
         let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] ?? [:]

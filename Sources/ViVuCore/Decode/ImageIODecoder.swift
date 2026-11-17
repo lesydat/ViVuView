@@ -33,7 +33,8 @@ public enum ImageIODecoder {
 
     /// Header-only facts.
     public static func meta(_ url: URL) throws -> ImageMeta {
-        try meta(source: try source(url), url: url)
+        if VectorImage.isVector(url) { return try VectorImage.meta(url) }
+        return try meta(source: try source(url), url: url)
     }
 
     public static func meta(source: CGImageSource, url: URL) throws -> ImageMeta {
@@ -53,6 +54,7 @@ public enum ImageIODecoder {
 
     /// Small thumbnail (for ThumbnailCache, the filmstrip and stage 0). Always decodes from the image if needed.
     public static func thumbnail(_ url: URL, maxPixel: Int) throws -> PixelBuffer {
+        if VectorImage.isVector(url) { return try VectorImage.render(url, longSide: maxPixel).0 }
         let source = try source(url)
         let meta = try meta(source: source, url: url)
         let request = decodeSize(longSide: meta.storedSize.longSide, target: maxPixel, uti: meta.uti)
@@ -63,6 +65,8 @@ public enum ImageIODecoder {
     /// `preferEmbedded` (RAW): use the embedded preview instead of developing the RAW.
     public static func screenDecode(_ url: URL, screenLongSide: Int, preferEmbedded: Bool = false,
                                     index: Int = 0) throws -> (PixelBuffer, ImageMeta) {
+        // Vectors are drawn at screen size whatever their own size: fit and zoom up to the screen stay sharp.
+        if VectorImage.isVector(url) { return try VectorImage.render(url, longSide: screenLongSide) }
         let source = try source(url)
         let meta = try meta(source: source, url: url)
         let long = meta.storedSize.longSide
@@ -82,6 +86,10 @@ public enum ImageIODecoder {
 
     /// Stage 2: full resolution.
     public static func fullDecode(_ url: URL, index: Int = 0) throws -> PixelBuffer {
+        if VectorImage.isVector(url) {
+            let meta = try VectorImage.meta(url)
+            return try VectorImage.render(url, longSide: meta.orientedSize.longSide).0
+        }
         let source = try source(url)
         let meta = try meta(source: source, url: url)
         return try viaFullImage(source: source, index: index, orientation: meta.orientation)

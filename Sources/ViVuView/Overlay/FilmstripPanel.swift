@@ -19,6 +19,8 @@ final class FilmstripPanel: NSPanel {
     /// The user scrolled the strip by hand; it stops following the current image until the next change.
     private var browsing = false
     var onSelect: ((Int) -> Void)?
+    /// Right-click on a thumbnail: the viewer goes to it and returns the picture's menu (docs/UI_SPEC.md §7).
+    var onContextMenu: ((Int) -> NSMenu?)?
     var onMouseInside: ((Bool) -> Void)?
     static let verticalPadding: Double = 8
 
@@ -125,12 +127,13 @@ final class FilmstripPanel: NSPanel {
             if let tex = thumbs.texture(for: urls[i]) {
                 let crop = cropUV(texture: tex, cellAspect: f.width / f.height)
                 quads.append(Quad.placed(texture: tex.texture, center: CGPoint(x: rect.midX, y: rect.midY), size: rect.size,
-                                         viewSize: size, uvRect: crop, cornerRadius: Float(4 * scale),
-                                         borderWidth: isCurrent ? Float(2 * scale) : 0, borderColor: SIMD4(1, 1, 1, 1)))
+                                         viewSize: size, uvRect: crop, cornerRadius: Float(4 * scale)))
             } else {
                 quads.append(Quad.placed(texture: nil, center: CGPoint(x: rect.midX, y: rect.midY), size: rect.size,
-                                         viewSize: size, color: SIMD4(0.22, 0.22, 0.24, 0.9), cornerRadius: Float(4 * scale),
-                                         borderWidth: isCurrent ? Float(2 * scale) : 0, borderColor: SIMD4(1, 1, 1, 1)))
+                                         viewSize: size, color: SIMD4(0.22, 0.22, 0.24, 0.9), cornerRadius: Float(4 * scale)))
+            }
+            if isCurrent {
+                quads.append(SelectionRing.quad(around: rect, cornerRadius: 4, scale: scale, viewSize: size, offset: 2.5))
             }
         }
         return quads
@@ -161,6 +164,11 @@ final class FilmstripPanel: NSPanel {
     fileprivate func clicked(at point: NSPoint) {
         guard let i = index(at: point) else { return }
         onSelect?(i)
+    }
+
+    fileprivate func contextMenu(at point: NSPoint) -> NSMenu? {
+        guard let i = index(at: point) else { return nil }
+        return onContextMenu?(i)
     }
 
     fileprivate func scrolled(_ event: NSEvent) {
@@ -201,6 +209,16 @@ final class FilmstripHostView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { panel?.scrolled(event) } }
+
+    // The menu is built and shown inside the main-actor block (NSMenu is not Sendable, so it cannot be returned
+    // out of it from `menu(for:)`).
+    override func rightMouseDown(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        MainActor.assumeIsolated {
+            guard let menu = panel?.contextMenu(at: NSPoint(x: p.x, y: bounds.height - p.y)) else { return }
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        }
+    }
 
     override func mouseMoved(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)

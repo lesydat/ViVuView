@@ -33,43 +33,32 @@ enum MainMenu {
                          action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         main.addItem(submenu: fileMenu, title: fileMenu.title)
 
-        let viewMenu = NSMenu(title: String(localized: "Xem"))
-        viewMenu.addCommand(String(localized: "Phóng to"), .zoomIn, "+", [.command])
-        viewMenu.addCommand(String(localized: "Thu nhỏ"), .zoomOut, "-", [.command])
-        viewMenu.addCommand(String(localized: "Kích thước thật (0)"), .actualSize, "0", [.command])
-        viewMenu.addCommand(String(localized: "Vừa cửa sổ (\\)"), .fit, "9", [.command])
+        let viewMenu = ViewerMenu(title: String(localized: "Xem"))
+        viewMenu.addCommands([.zoomIn, .zoomOut, .actualSize, .fit])
         viewMenu.addItem(.separator())
-        viewMenu.addCommand(String(localized: "Xoay trái ([)"), .rotateLeft, "", [])
-        viewMenu.addCommand(String(localized: "Xoay phải (])"), .rotateRight, "", [])
+        viewMenu.addCommands([.rotateLeft, .rotateRight])
         viewMenu.addItem(.separator())
-        viewMenu.addCommand(String(localized: "Thông tin (I)"), .toggleInfo, "i", [.command])
-        viewMenu.addCommand(String(localized: "Filmstrip (T)"), .toggleFilmstrip, "", [])
-        viewMenu.addCommand(String(localized: "Gallery (G)"), .toggleGallery, "", [])
+        viewMenu.addCommands([.toggleInfo, .toggleFilmstrip, .toggleGallery])
         viewMenu.addItem(.separator())
-        viewMenu.addCommand(String(localized: "Toàn màn hình (F)"), .toggleFullScreen, "f", [.command, .control])
+        viewMenu.addCommands([.toggleFullScreen])
         main.addItem(submenu: viewMenu, title: viewMenu.title)
 
-        let goMenu = NSMenu(title: String(localized: "Đi tới"))
-        goMenu.addCommand(String(localized: "Ảnh sau"), .next, String(UnicodeScalar(NSRightArrowFunctionKey)!), [.command])
-        goMenu.addCommand(String(localized: "Ảnh trước"), .previous, String(UnicodeScalar(NSLeftArrowFunctionKey)!), [.command])
-        goMenu.addCommand(String(localized: "Ảnh đầu (Home)"), .first, "", [])
-        goMenu.addCommand(String(localized: "Ảnh cuối (End)"), .last, "", [])
+        let goMenu = ViewerMenu(title: String(localized: "Đi tới"))
+        goMenu.addCommands([.next, .previous, .first, .last])
         goMenu.addItem(.separator())
-        goMenu.addCommand(String(localized: "Hiện trong Finder"), .revealInFinder, "r", [.command, .shift])
-        goMenu.addCommand(String(localized: "Copy ảnh"), .copyImage, "c", [.command])
-        goMenu.addCommand(String(localized: "Copy đường dẫn"), .copyPath, "c", [.command, .shift])
-        goMenu.addCommand(String(localized: "Chuyển vào Thùng rác"), .moveToTrash, String(UnicodeScalar(NSBackspaceCharacter)!), [.command])
+        goMenu.addCommands([.revealInFinder, .copyImage, .copyPath, .moveToTrash])
         main.addItem(submenu: goMenu, title: goMenu.title)
 
-        let windowMenu = NSMenu(title: String(localized: "Cửa sổ"))
-        windowMenu.addCommand(String(localized: "Theo kích thước ảnh"), .followImageSize, "", [])
+        let windowMenu = ViewerMenu(title: String(localized: "Cửa sổ"))
+        windowMenu.addCommands([.followImageSize])
         windowMenu.addItem(withTitle: String(localized: "Thu nhỏ"),
                            action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         main.addItem(submenu: windowMenu, title: windowMenu.title)
         NSApplication.shared.windowsMenu = windowMenu
 
         let helpMenu = NSMenu(title: String(localized: "Trợ giúp"))
-        helpMenu.addItem(withTitle: String(localized: "Phím tắt"), action: #selector(AppDelegate.showShortcuts(_:)), keyEquivalent: "/")
+        helpMenu.addItem(withTitle: MenuCommand.of(.showShortcuts).title, action: #selector(AppDelegate.showShortcuts(_:)),
+                         keyEquivalent: "/")
         main.addItem(submenu: helpMenu, title: helpMenu.title)
         NSApplication.shared.helpMenu = helpMenu
 
@@ -77,31 +66,78 @@ enum MainMenu {
     }
 }
 
-extension MainMenu {
-    /// The keyboard table of docs/UI_SPEC.md §6, shown from Help → Shortcuts.
-    static var shortcutsText: String {
-        [
-            "← → · Space ⇧Space · PageUp PageDown: " + String(localized: "ảnh trước / sau (giữ để lướt)"),
-            "Home / End: " + String(localized: "ảnh đầu / cuối"),
-            "↑ ↓ · + −: " + String(localized: "zoom (đang zoom thì mũi tên pan; ⌘← ⌘→ chuyển ảnh)"),
-            "0: 100%   \\: " + String(localized: "vừa cửa sổ (nhấn 2 lần: theo kích thước ảnh)"),
-            "[ ]: " + String(localized: "xoay trái / phải"),
-            "F: " + String(localized: "toàn màn hình") + "   T: Filmstrip   G / Enter: Gallery   I: " + String(localized: "thông tin"),
-            "E: " + String(localized: "kéo giãn tương phản (ảnh 16-bit)") + "   , .: " + String(localized: "khung trước / sau (ảnh động)"),
-            "⌘C · ⌘⇧C: " + String(localized: "copy ảnh · copy đường dẫn") + "   ⌘⇧R: " + String(localized: "hiện trong Finder"),
-            "⌘⌫: " + String(localized: "chuyển vào Thùng rác") + "   Esc: " + String(localized: "đóng panel / gallery / fullscreen / cửa sổ"),
-        ].joined(separator: "\n")
+/// One entry per command for the main menu and the right-click menu (docs/UI_SPEC.md §5, §6): the title, and
+/// the shortcut shown on the right. Shortcuts without ⌘/⌃/⌥ (`[`, `T`, Home…) are only shown: the key itself
+/// is handled by KeyBindings (see `ViewerMenu`).
+struct MenuCommand {
+    let title: String
+    let key: String
+    let modifiers: NSEvent.ModifierFlags
+
+    @MainActor
+    static func of(_ command: Command) -> MenuCommand {
+        func key(_ scalar: Int) -> String { String(UnicodeScalar(UInt16(scalar))!) }
+        switch command {
+        case .zoomIn: return .init(title: String(localized: "Phóng to"), key: "+", modifiers: .command)
+        case .zoomOut: return .init(title: String(localized: "Thu nhỏ"), key: "-", modifiers: .command)
+        case .actualSize: return .init(title: String(localized: "Kích thước thật"), key: "0", modifiers: .command)
+        case .fit: return .init(title: String(localized: "Vừa cửa sổ"), key: "9", modifiers: .command)
+        case .rotateLeft: return .init(title: String(localized: "Xoay trái"), key: "[", modifiers: [])
+        case .rotateRight: return .init(title: String(localized: "Xoay phải"), key: "]", modifiers: [])
+        case .toggleInfo: return .init(title: String(localized: "Thông tin"), key: "i", modifiers: .command)
+        case .toggleFilmstrip: return .init(title: "Filmstrip", key: "t", modifiers: [])
+        case .toggleGallery: return .init(title: "Gallery", key: "g", modifiers: [])
+        case .toggleFullScreen: return .init(title: String(localized: "Toàn màn hình"), key: "f", modifiers: [.command, .control])
+        case .next: return .init(title: String(localized: "Ảnh sau"), key: key(NSRightArrowFunctionKey), modifiers: .command)
+        case .previous: return .init(title: String(localized: "Ảnh trước"), key: key(NSLeftArrowFunctionKey), modifiers: .command)
+        case .first: return .init(title: String(localized: "Ảnh đầu"), key: key(NSHomeFunctionKey), modifiers: [])
+        case .last: return .init(title: String(localized: "Ảnh cuối"), key: key(NSEndFunctionKey), modifiers: [])
+        case .revealInFinder: return .init(title: String(localized: "Hiện trong Finder"), key: "r", modifiers: [.command, .shift])
+        case .copyImage: return .init(title: String(localized: "Copy ảnh"), key: "c", modifiers: .command)
+        case .copyPath: return .init(title: String(localized: "Copy đường dẫn"), key: "c", modifiers: [.command, .shift])
+        case .moveToTrash: return .init(title: String(localized: "Chuyển vào Thùng rác"), key: key(NSBackspaceCharacter), modifiers: .command)
+        case .followImageSize: return .init(title: String(localized: "Theo kích thước ảnh"), key: "", modifiers: [])
+        case .togglePlayback: return .init(title: String(localized: "Phát / tạm dừng"), key: " ", modifiers: [])
+        case .previousFrame: return .init(title: String(localized: "Khung trước"), key: ",", modifiers: [])
+        case .nextFrame: return .init(title: String(localized: "Khung sau"), key: ".", modifiers: [])
+        case .toggleStretch: return .init(title: String(localized: "Kéo giãn tương phản"), key: "e", modifiers: [])
+        case .showShortcuts: return .init(title: String(localized: "Phím tắt"), key: "/", modifiers: .command)
+        case .escape: return .init(title: String(localized: "Đóng panel, Gallery, fullscreen, cửa sổ"), key: "", modifiers: [])
+        case .panLeft, .panRight, .panUp, .panDown:
+            return .init(title: String(localized: "Di chuyển ảnh"), key: "", modifiers: [])
+        }
+    }
+}
+
+/// Main-menu submenu whose plain-key shortcuts are display only, so `T`, `[`, Home… keep reaching the viewer
+/// (and the gallery's type-to-select) through KeyBindings instead of being taken by the menu.
+final class ViewerMenu: NSMenu {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection([.command, .control, .option]).isEmpty { return false }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+@MainActor
+extension NSMenu {
+    @discardableResult
+    func addCommand(_ command: Command, target: AnyObject? = nil) -> NSMenuItem {
+        let entry = MenuCommand.of(command)
+        let item = NSMenuItem(title: entry.title, action: #selector(ViewerContentView.performMenuCommand(_:)),
+                              keyEquivalent: entry.key)
+        item.keyEquivalentModifierMask = entry.modifiers
+        item.representedObject = command.rawValue
+        item.target = target
+        addItem(item)
+        return item
+    }
+
+    func addCommands(_ commands: [Command], target: AnyObject? = nil) {
+        for command in commands { addCommand(command, target: target) }
     }
 }
 
 private extension NSMenu {
-    func addCommand(_ title: String, _ command: Command, _ key: String, _ modifiers: NSEvent.ModifierFlags) {
-        let item = NSMenuItem(title: title, action: #selector(ViewerContentView.performMenuCommand(_:)), keyEquivalent: key)
-        item.keyEquivalentModifierMask = modifiers
-        item.representedObject = command.rawValue
-        addItem(item)
-    }
-
     func addItem(submenu: NSMenu, title: String) {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.submenu = submenu

@@ -10,6 +10,7 @@ usage: vivu-bench <command> [args]
 commands:
   version                         print the bench version
   decode <file>...                time meta / embedded preview / screen decode / full decode (ImageIO)
+  thumbs <dir>                    make the gallery/filmstrip thumbnail of every image in a folder; list failures
   huge <file> [--fit N] [--imageio]  own reader for a huge TIFF/PSB: fit + zoom source, region and tile reads
   test-fixtures [dir]             write the small committed fixtures (default Tests/Fixtures)
   doc-types                       print CFBundleDocumentTypes (used by Scripts/bundle.sh)
@@ -17,6 +18,28 @@ commands:
 """
 
 let args = Array(CommandLine.arguments.dropFirst())
+
+/// Same path as the app's thumbnails (ThumbnailStore.make). SVG needs the app's renderer and is skipped here.
+func thumbsCommand(_ args: [String]) throws {
+    guard let path = args.first else { fail(usage) }
+    let dir = URL(fileURLWithPath: path)
+    let files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        .filter { FormatCatalog.isImage($0) && !VectorImage.isVector($0) }
+        .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    var failed = 0
+    for url in files {
+        let start = Date()
+        do {
+            let (thumb, _) = try ThumbnailStore.make(url)
+            let ms = Int(Date().timeIntervalSince(start) * 1000)
+            if ms > 500 { print("slow \(ms) ms  \(url.lastPathComponent) \(thumb.size.width)x\(thumb.size.height)") }
+        } catch {
+            failed += 1
+            print("FAIL \(url.lastPathComponent): \(error)")
+        }
+    }
+    print("\(files.count) images, \(failed) failed")
+}
 let screenLongSide = 3024   // a 14" MacBook Pro display at 2x
 
 func fail(_ message: String) -> Never {
@@ -175,9 +198,11 @@ func makeFixtures(_ args: [String]) throws {
 do {
     switch args.first {
     case "version":
-        print("vivu-bench 0.1.0 (\(Tuning.bundleID))")
+        print("vivu-bench 0.2.0 (\(Tuning.bundleID))")
     case "decode":
         try decodeCommand(Array(args.dropFirst()))
+    case "thumbs":
+        try thumbsCommand(Array(args.dropFirst()))
     case "huge":
         try hugeCommand(Array(args.dropFirst()))
     case "test-fixtures":

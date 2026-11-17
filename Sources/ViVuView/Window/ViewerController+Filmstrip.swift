@@ -24,12 +24,33 @@ extension ViewerController {
         return panel.panelHeight
     }
 
+    /// In full screen a filmstrip the user turned on (`T`, swipe up, or "Always") takes its height from the bottom
+    /// of the picture instead of covering it; the auto-hide peek at the screen edge still overlays (UI_SPEC §7).
+    var filmstripBottomInset: CGFloat {
+        guard isFullScreen, filmstripVisible, strip.pinned || settings.filmstrip == .always, let panel = strip.panel
+        else { return 0 }
+        return panel.panelHeight
+    }
+
+    func layoutFilmstripInset() {
+        let inset = filmstripBottomInset
+        guard abs(metalView.frame.minY - inset) > 0.5 else { return }
+        layoutOverlays()
+        clampViewport()
+        metalView.setNeedsRender()
+    }
+
     func makeFilmstripIfNeeded() -> FilmstripPanel {
         if let panel = strip.panel { return panel }
         let panel = FilmstripPanel(renderer: renderer, thumbs: thumbs)
         panel.onSelect = { [weak self] index in
             guard let self, let current = nav.index else { return }
             navigate(by: index - current, animated: abs(index - current) == 1)
+        }
+        panel.onContextMenu = { [weak self] index in
+            guard let self, let current = nav.index else { return nil }
+            if index != current { navigate(by: index - current, animated: false) }
+            return contextMenu()
         }
         panel.onMouseInside = { [weak self] inside in
             guard let self else { return }
@@ -51,6 +72,7 @@ extension ViewerController {
         panel.orderFront(nil)
         panel.stripView.setNeedsRender()
         keepWindowAboveFilmstrip()
+        layoutFilmstripInset()
     }
 
     func hideFilmstrip() {
@@ -58,6 +80,7 @@ extension ViewerController {
         guard let panel = strip.panel, panel.isVisible else { return }
         panel.orderOut(nil)
         thumbs.want([], client: "filmstrip")
+        layoutFilmstripInset()
     }
 
     func toggleFilmstrip() {

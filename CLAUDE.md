@@ -23,13 +23,13 @@ Scripts/build-libtiff.sh         # libtiff/libjpeg-turbo/zstd tĩnh universal v�
 Scripts/bundle.sh                # build/ViVuView.app, universal arm64 + x86_64, ký ad-hoc, kiểm otool -L
 build/ViVuView.app/Contents/MacOS/ViVuView --script Tests/Scripts/smoke.txt          # smoke, ghi build/smoke/*.png
 arch -x86_64 build/ViVuView.app/Contents/MacOS/ViVuView --script Tests/Scripts/smoke.txt  # lát Intel qua Rosetta
-Scripts/strings.sh               # cập nhật Resources/Localizable.xcstrings từ mã nguồn, liệt kê chuỗi thiếu tiếng Anh
+Scripts/strings.sh               # cập nhật Resources/Localizable.xcstrings từ mã nguồn, liệt kê chuỗi thiếu bản dịch ở từng ngôn ngữ (12 ngôn ngữ, UI_SPEC §12)
 swift run vivu-bench <lệnh>      # đo decode không cần cửa sổ
 build/ViVuView.app/Contents/MacOS/ViVuView --bench-navigate <thư mục> [--count N]   # đo chuyển ảnh trong app thật
 build/ViVuView.app/Contents/MacOS/ViVuView --bench-open <file> | --bench-idle <file> | --bench-zoom <ảnh lớn>
 ```
 
-Mỗi mốc phải qua `Scripts/check.sh` (test + bundle universal + mọi kịch bản trong `Tests/Scripts/` trên cả arm64 và x86_64 qua Rosetta); xem lại ảnh snapshot trong `build/smoke/`; ghi số đo vào `docs/BENCH.md`.
+Mỗi mốc phải qua `Scripts/check.sh` (test + bundle universal + mọi kịch bản trong `Tests/Scripts/` trên cả arm64 và x86_64 qua Rosetta, chạy với giao diện tiếng Việt; thêm `Tests/Scripts/lang/` kiểm ngôn ngữ); xem lại ảnh snapshot trong `build/smoke/`; ghi số đo vào `docs/BENCH.md`.
 
 Kịch bản (`--script`): `open`, `expect-loaded`, `expect-error`, `expect <chuỗi trong trạng thái>`, `key <phím>` (ví dụ `right`, `cmd+right`, `backslash`, `0`), `action <lệnh hoặc hover/unhover/click>`, `wait <ms>`, `snapshot <png>`, `print`, `quit`.
 
@@ -48,7 +48,8 @@ Kịch bản (`--script`): `open`, `expect-loaded`, `expect-error`, `expect <chu
 - Không decode, đọc file hay `stat` trên main thread.
 - Hằng số chỉnh được ở `Tuning.swift`; tuỳ chọn người dùng ở `Settings.swift`.
 - Chỉ cache trong RAM, không ghi cache ra đĩa. Không thêm thư viện ngoài ngoài libtiff (build tĩnh, M8).
-- Bộ đọc riêng (TIFF/PSB) lỗi thì rơi về ImageIO, không crash.
+- Bộ đọc riêng (TIFF/PSB) lỗi thì rơi về ImageIO, không crash. SVG đi qua hook `VectorImage` (NSImage ở lớp app).
+- Chuỗi mới phải có bản dịch cho mọi ngôn ngữ trong catalog; danh sách ngôn ngữ khớp giữa `bundle.sh`, `strings.sh`, `AppLanguage.all`.
 - Mốc sau chậm hơn mốc trước quá 20% trong `docs/BENCH.md` là lỗi.
 - Báo cáo trung thực: chưa kiểm được thì ghi "chưa kiểm chứng".
 - Commit trên `develop`, mỗi mốc một commit; không push khi chưa được yêu cầu.

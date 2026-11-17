@@ -36,7 +36,7 @@ Trạng thái: **M0–M10 đã làm** (2026-11-16). Còn lại các mục "chưa
 | Gallery | Masonry, xếp vào cột thấp nhất |
 | Filmstrip | Panel riêng sát đáy màn hình, ngoài cửa sổ chính |
 | Phím | `0` = 100%, `\` = Fit, `[` xoay trái, `]` xoay phải; không có phím `1`, `2` |
-| Ngôn ngữ giao diện | Tiếng Việt và tiếng Anh (String Catalog), theo ngôn ngữ hệ thống |
+| Ngôn ngữ giao diện | 12 ngôn ngữ phổ biến (String Catalog, UI_SPEC mục 12), theo ngôn ngữ hệ thống; ngôn ngữ không có thì tiếng Anh |
 
 ## 3. Mục tiêu hiệu năng
 
@@ -142,4 +142,6 @@ App chỉ được coi là xong khi mọi dòng dưới đây có kết quả. D
 | File hỏng không làm crash | Test file cắt cụt/sai bảng (PSB, TIFF) + kịch bản smoke | **Đạt** |
 | Ảnh động | Test + kịch bản `m10` | **Đạt** (GIF); WebP/APNG/AVIF/HEICS dùng cùng đường, chưa có file thử |
 | RAW | — | **Chưa kiểm chứng**: máy phát triển không có file RAW |
-| Tiếng Việt / tiếng Anh | Chạy với `-AppleLanguages` | **Đạt** |
+| Đa ngôn ngữ, mặc định theo máy, dự phòng tiếng Anh | `check.sh`: `-AppleLanguages (pl)` ra tiếng Anh, `(de)` ra tiếng Đức | **Đạt** (kịch bản `lang/`). Bản dịch zh/ja/ko/fr/de/es/pt-BR/ru/it do AI dịch, chưa có người bản ngữ duyệt |
+| SVG | Test `VectorImageTests` + kịch bản `m11-svg` | **Đạt**: vẽ qua NSImage, nét khi zoom (vẽ lại tới 8192px). Trên macOS 14–15 **chưa kiểm chứng** |
+| Giao diện hệ thống mới (nút đèn giao thông, control) | `otool -l` ghi `sdk 27.2` | Nguyên nhân giao diện cũ đã sửa (binary ghi SDK 14.0). Hình thật **chưa kiểm chứng** (cần nhìn trên máy) |

@@ -10,6 +10,7 @@ enum Command: String, CaseIterable {
     case previousFrame, nextFrame, togglePlayback
     case copyImage, copyPath, revealInFinder, moveToTrash
     case followImageSize
+    case showShortcuts
     case escape
 }
 
@@ -55,8 +56,9 @@ enum KeyBindings {
         switch key {
         case .left: return cmd ? .previous : (context.isZoomed ? .panLeft : .previous)
         case .right: return cmd ? .next : (context.isZoomed ? .panRight : .next)
-        case .up: return context.isZoomed && !cmd ? .panUp : .zoomIn
-        case .down: return context.isZoomed && !cmd ? .panDown : .zoomOut
+        // Only pan: zooming here clashed with panning once zoomed. Zoom is + − (⌘+ ⌘−), pinch or ⌘ + wheel.
+        case .up: return context.isZoomed && !cmd ? .panUp : nil
+        case .down: return context.isZoomed && !cmd ? .panDown : nil
         case .home: return .first
         case .end: return .last
         case .pageUp: return .previous
@@ -90,6 +92,7 @@ enum KeyBindings {
         case "e", "E": return .toggleStretch
         case ",": return .previousFrame
         case ".": return .nextFrame
+        case "?": return .showShortcuts
         default: return nil
         }
     }

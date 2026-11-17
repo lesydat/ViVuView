@@ -54,7 +54,13 @@ final class ThumbnailService {
         for i in 0..<longest {
             for list in lists where i < list.count && wanted.insert(list[i]).inserted { order.append(list[i]) }
         }
-        for (url, ticket) in tickets where !wanted.contains(url) {
+        // Room for everything wanted at once, or visible thumbnails evict each other and stay blank.
+        let needed = order.count * Tuning.thumbnailTextureEstimate * 5 / 4
+        let budget = min(max(needed, Tuning.thumbnailTextureMinimumMB << 20), Tuning.thumbnailTextureMaximumMB << 20)
+        if budget != textures.budget { _ = textures.setBudget(budget) }
+        // A job already running is left to finish (its thumbnail lands in the store): cancelling it would not
+        // stop ImageIO, and starting it again later ran the same slow picture twice on both workers.
+        for (url, ticket) in tickets where !wanted.contains(url) && !ticket.isExecuting {
             ticket.cancel()
             tickets[url] = nil
         }
@@ -63,16 +69,37 @@ final class ThumbnailService {
         }
     }
 
-    private func start(_ url: URL, rank: Int) {
+    /// Thrown on the normal lane when the header shows a very large picture: the job moves to the large lane.
+    private struct MoveToLargeLane: Error {}
+
+    private func isLarge(_ size: PixelSize) -> Bool {
+        Double(size.width) * Double(size.height) / 1_000_000 > Tuning.thumbnailLargeMegapixels
+    }
+
+    private func start(_ url: URL, rank: Int, large: Bool? = nil) {
         let store = store, renderer = renderer
         let priority: DecodeScheduler.Priority = rank < 8 ? .high : rank < 40 ? .normal : .low
-        tickets[url] = scheduler.submit(.thumbnails, priority: priority, work: { isCancelled in
+        // Known size from the header pass decides the lane; unknown ones check the header first.
+        let large = large ?? (VectorImage.isVector(url) ? nil : sizes[url].map(isLarge))
+        let checkSize = large == nil
+        let threshold = Tuning.thumbnailLargeMegapixels
+        tickets[url] = scheduler.submit(large == true ? .largeThumbnails : .thumbnails, priority: priority, work: { isCancelled in
             let thumb: CompressedThumbnail
             let pixels: PixelBuffer
             if let cached = store.get(url) {
                 thumb = cached
                 pixels = try ThumbnailStore.decode(cached)
             } else {
+                if checkSize {
+                    if VectorImage.isVector(url) {
+                        // Drawing cost follows the document's complexity, roughly its file size.
+                        let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                        if bytes > VectorImage.largeFileBytes { throw MoveToLargeLane() }
+                    } else if let size = (try? ImageIODecoder.meta(url))?.orientedSize,
+                              Double(size.width) * Double(size.height) / 1_000_000 > threshold {
+                        throw MoveToLargeLane()
+                    }
+                }
                 (thumb, pixels) = try ThumbnailStore.make(url)
                 store.put(thumb, for: url)
             }
@@ -83,10 +110,16 @@ final class ThumbnailService {
         }, completion: { [weak self] result in
             guard let self else { return }
             tickets[url] = nil
-            guard case .success(let decoded) = result else { return }
-            textures.insert(decoded, for: url, cost: decoded.texture.estimatedBytes)
-            sizes[url] = decoded.meta.orientedSize
-            onThumbnail.forEach { $0(url) }
+            switch result {
+            case .success(let decoded):
+                textures.insert(decoded, for: url, cost: decoded.texture.estimatedBytes)
+                sizes[url] = decoded.meta.orientedSize
+                onThumbnail.forEach { $0(url) }
+            case .failure(let error) where error is MoveToLargeLane:
+                start(url, rank: rank, large: true)
+            case .failure:
+                break
+            }
         })
     }
 

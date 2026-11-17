@@ -4,7 +4,8 @@ import AppKit
 /// buttons on the right. The standard traffic lights sit on top of it on the left.
 @MainActor
 final class TitleBarOverlay: NSView {
-    static let height: CGFloat = 28
+    /// Actual height follows the system title bar (`ViewerWindow.titleBarHeight`), so the traffic lights sit centered in it.
+    static let minimumHeight: CGFloat = 28
     private let titleLabel = NSTextField(labelWithString: "")
     var onCommand: ((Command) -> Void)?
 
@@ -28,7 +29,7 @@ final class TitleBarOverlay: NSView {
         NSLayoutConstraint.activate([
             titleLabel.centerXAnchor.constraint(equalTo: holder.centerXAnchor),
             titleLabel.centerYAnchor.constraint(equalTo: holder.centerYAnchor),
-            titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: holder.leadingAnchor, constant: 80),
+            titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: holder.leadingAnchor, constant: 96),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: buttons.leadingAnchor, constant: -8),
             buttons.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -8),
             buttons.centerYAnchor.constraint(equalTo: holder.centerYAnchor),
@@ -48,13 +49,15 @@ final class TitleBarOverlay: NSView {
     }
 
     private func button(_ symbol: String, _ tip: String, _ command: Command) -> NSButton {
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip) ?? NSImage()
+        // Same symbol size as the gallery bar's buttons (15pt).
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)) ?? NSImage()
         let button = NSButton(image: image, target: self, action: #selector(pressed(_:)))
         button.isBordered = false
         button.contentTintColor = NSColor(white: 1, alpha: 0.85)
         button.toolTip = tip
         button.identifier = NSUserInterfaceItemIdentifier(command.rawValue)
-        button.widthAnchor.constraint(equalToConstant: 22).isActive = true
+        button.widthAnchor.constraint(equalToConstant: 24).isActive = true
         return button
     }
 

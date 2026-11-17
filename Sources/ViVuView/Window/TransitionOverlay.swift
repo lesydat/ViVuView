@@ -71,6 +71,9 @@ final class Transition {
     var committedAt: Double?
     /// Drawn inside the main view (full screen) instead of the overlay.
     let inMainView: Bool
+    /// Device pixels. In the overlay the pictures stand in for the window, so they get its rounded corners:
+    /// square ones turned round the moment the window came back.
+    var cornerRadius: Float = 0
 
     init(style: Style, direction: Int, travel: Double, old: TransitionImage?, inMainView: Bool) {
         self.style = style
@@ -104,7 +107,7 @@ final class Transition {
     private func quad(_ image: TransitionImage, rect: CGRect, alpha: Double, viewSize: CGSize) -> Quad {
         let a = Float(alpha)
         return Quad.placed(texture: image.texture.texture, center: CGPoint(x: rect.midX, y: rect.midY), size: rect.size,
-                           rotation: image.rotation, viewSize: viewSize, color: SIMD4(a, a, a, a))
+                           rotation: image.rotation, viewSize: viewSize, color: SIMD4(a, a, a, a), cornerRadius: cornerRadius)
     }
 
     static func lerp(_ a: CGRect, _ b: CGRect, _ t: Double) -> CGRect {

@@ -54,10 +54,14 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // Window behaviour
     /// The user resized the window by hand: later images fit inside that frame (docs/UI_SPEC.md §2.1).
     var fixedFrame = false
+    /// Set by `open(_:)`: the next window resize centers the window on the screen.
+    var centerOnNextResize = true
     /// Sort order the folder was last scanned with.
     var appliedSort = "\(Settings.shared.sortKey.rawValue)/\(Settings.shared.sortAscending)"
     private var lastFitKey: TimeInterval = 0
     private var resizingProgrammatically = false
+    /// Entering or leaving full screen: the system's own resize must not count as the user fixing the frame.
+    private var fullScreenTransition = false
 
     // Chrome and mouse state (used by ViewerController+Input.swift)
     var chromeVisible = false
@@ -65,7 +69,14 @@ final class ViewerController: NSObject, NSWindowDelegate {
     var statusPinned = false
     var mouseDownEvent: NSEvent?
     var dragged = false
+    var clickActivatesWindow = false
+    /// Screen position of the last pointer event that showed the chrome.
+    var lastPointer: CGPoint?
+    /// Scripts drive hover themselves (ScriptRunner).
+    var ignoresRealPointer = false
     var pendingClick: Task<Void, Never>?
+    /// Present while the translucent background is chosen (`applyBackground`).
+    var backdrop: NSVisualEffectView?
 
     init(renderer: Renderer) {
         self.renderer = renderer
@@ -73,10 +84,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
         metalView = MetalView(renderer: renderer)
         messageView = MessageView(frame: .zero)
         content = ViewerContentView(frame: NSRect(origin: .zero, size: ViewerWindow.emptySize))
-        titleBar = TitleBarOverlay(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: TitleBarOverlay.height))
+        titleBar = TitleBarOverlay(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: TitleBarOverlay.minimumHeight))
         statusBar = StatusBar(frame: NSRect(x: 0, y: 0, width: ViewerWindow.emptySize.width, height: StatusBar.height))
         zoomBadge = ZoomBadge(frame: NSRect(x: 0, y: 0, width: 72, height: 26))
-        thumbs = ThumbnailService(renderer: renderer, scheduler: scheduler, budgetMB: Settings.shared.thumbnailMemoryMB)
+        thumbs = ThumbnailService(renderer: renderer, scheduler: scheduler, budgetMB: Settings.shared.effectiveThumbnailMemoryMB)
         super.init()
         thumbs.onThumbnail.append { [weak self] url in
             self?.thumbnailArrivedForNavigation(url)
@@ -98,9 +109,11 @@ final class ViewerController: NSObject, NSWindowDelegate {
         window.delegate = self
         titleBar.onCommand = { [weak self] in self?.perform($0) }
         for view in [titleBar, statusBar] as [NSView] { view.alphaValue = 0; view.isHidden = true }
-        messageView.message = String(localized: "Kéo ảnh vào đây hoặc nhấn ⌘O")
+        messageView.message = String(localized: "Kéo ảnh vào đây, nhấn đúp hoặc ⌘O để mở")
         metalView.sceneProvider = { [weak self] size in self?.scene(viewSize: size) ?? [] }
         observeSettings()
+        // The stored background from the first frame (before, only a later settings change applied it).
+        applyBackground()
         memoryWatcher = MemoryPressureWatcher { [weak self] level in self?.memoryPressureChanged(level) }
     }
 
@@ -197,7 +210,8 @@ final class ViewerController: NSObject, NSWindowDelegate {
     /// (the window may be larger than the image because of its minimum size or full screen).
     func fitted(_ image: PixelSize, view: CGSize, turns: Int) -> Viewport {
         var vp = Viewport.fit(image: image, view: view, quarterTurns: turns)
-        if settings.openSize != .alwaysFit { vp.scale = min(vp.scale, unitScale) }
+        // Vectors have no native resolution: they always fill the window.
+        if settings.openSize != .alwaysFit && meta?.isVector != true { vp.scale = min(vp.scale, unitScale) }
         return vp
     }
 
@@ -229,8 +243,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
         let image = Viewport.rotatedSize(meta.orientedSize, quarterTurns: viewport.quarterTurns)
         let size = WindowSizing.contentSize(image: image, pointsPerPixel: pointsPerPixel, available: availableFrame.size,
                                             minimum: ViewerWindow.minimumSize, zoom: zoom)
-        let center = window.isVisible ? CGPoint(x: window.frame.midX, y: window.frame.midY)
-                                      : CGPoint(x: availableFrame.midX, y: availableFrame.midY)
+        // A file the user opens lands in the middle of the screen; browsing keeps the window where it is.
+        let center = window.isVisible && !centerOnNextResize ? CGPoint(x: window.frame.midX, y: window.frame.midY)
+                                                             : CGPoint(x: availableFrame.midX, y: availableFrame.midY)
+        centerOnNextResize = false
         let frame = WindowSizing.frame(size: size, center: center, available: availableFrame)
         if frame != window.frame {
             resizingProgrammatically = true
@@ -320,6 +336,10 @@ final class ViewerController: NSObject, NSWindowDelegate {
     // MARK: Commands
 
     func perform(_ command: Command) {
+        if command == .showShortcuts {
+            ShortcutsPanel.shared.toggle(over: window)
+            return
+        }
         if galleryOpen {
             switch command {
             case .next: selectCell(gallery.selected + 1)
@@ -372,6 +392,7 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case .previousFrame: stepAnimation(by: -1)
         case .nextFrame: stepAnimation(by: 1)
         case .toggleInfo: toggleInfo()
+        case .showShortcuts: break
         }
     }
 
@@ -424,6 +445,9 @@ final class ViewerController: NSObject, NSWindowDelegate {
         withObservationTracking({
             _ = settings.renderUnit
             _ = settings.statusBar
+            _ = settings.clickPinsStatusBar
+            _ = settings.barClearGlass
+            _ = settings.barTint
             _ = settings.background
             _ = settings.filmstrip
             _ = settings.filmstripThumb
@@ -446,21 +470,62 @@ final class ViewerController: NSObject, NSWindowDelegate {
             appliedSort = sort
             rescanFolder()
         }
-        thumbs.setBudget(megabytes: settings.thumbnailMemoryMB)
+        thumbs.setBudget(megabytes: settings.effectiveThumbnailMemoryMB)
         detail.tiles.setBudget(settings.tileMemoryMB << 20)
         if settings.filmstrip == .always { showFilmstrip() } else if !strip.pinned { hideFilmstrip() }
         if filmstripVisible { showFilmstrip() }
-        switch settings.background {
-        case .black, .checkerboard: metalView.clearColor = SIMD4(0, 0, 0, 1)
-        case .darkGray: metalView.clearColor = SIMD4(0.11, 0.11, 0.12, 1)
-        }
+        applyBackground()
         resizeWindowToImage()
+        if !settings.clickPinsStatusBar || settings.statusBar != .onHover { statusPinned = false }
         updateStatusVisibility()
         updateStatus()
         metalView.setNeedsRender()
     }
 
     // MARK: Window delegate
+
+    /// The chosen background on every layer behind the picture, not only the Metal clear color: the window, the
+    /// content view and the Metal layer show through while the window resizes or before a frame is drawn, and
+    /// black there made a gray background flash black on image changes.
+    /// The translucent background shows the windows behind through a blur; in full screen nothing is behind the
+    /// window, so it is black there (docs/UI_SPEC.md §10). `fullScreen` overrides the state during a transition.
+    func applyBackground(fullScreen: Bool? = nil) {
+        OverlayBackground.apply(.init(clearGlass: settings.barClearGlass, tint: settings.barTint))
+        let translucent = settings.background == .translucent && !(fullScreen ?? isFullScreen)
+        setBackdrop(visible: translucent)
+        metalView.transparent = translucent
+        window.isOpaque = !translucent
+        if translucent {
+            window.backgroundColor = .clear
+            content.layer?.backgroundColor = NSColor.clear.cgColor
+        } else {
+            let rgb = settings.background.rgb
+            metalView.clearColor = SIMD4(rgb.x, rgb.y, rgb.z, 1)
+            // Drawable is plain 8-bit Display P3 (not sRGB-encoded), so the same numbers give the same color.
+            let color = NSColor(displayP3Red: rgb.x, green: rgb.y, blue: rgb.z, alpha: 1)
+            window.backgroundColor = color
+            content.layer?.backgroundColor = color.cgColor
+            metalView.layer?.backgroundColor = color.cgColor
+        }
+        window.invalidateShadow()
+        messageView.onLightBackground = settings.background.isLight && !translucent
+        metalView.setNeedsRender()
+    }
+
+    /// Blur of what is behind the window, under the picture (the translucent background).
+    private func setBackdrop(visible: Bool) {
+        if visible, backdrop == nil {
+            let view = NSVisualEffectView(frame: content.bounds)
+            view.autoresizingMask = [.width, .height]
+            view.blendingMode = .behindWindow
+            view.material = .hudWindow
+            view.state = .active
+            view.appearance = NSAppearance(named: .darkAqua)
+            content.addSubview(view, positioned: .below, relativeTo: metalView)
+            backdrop = view
+        }
+        backdrop?.isHidden = !visible
+    }
 
     func windowDidResize(_ notification: Notification) {
         layoutOverlays()
@@ -471,18 +536,66 @@ final class ViewerController: NSObject, NSWindowDelegate {
     }
 
     func windowDidEndLiveResize(_ notification: Notification) {
-        if !resizingProgrammatically && !isFullScreen && meta != nil { fixedFrame = true }
+        if !resizingProgrammatically && !fullScreenTransition && !isFullScreen && meta != nil { fixedFrame = true }
     }
 
+    /// With a toolbar, full screen keeps the title bar on screen unless told to hide it with the menu bar; it then
+    /// slides down with the traffic lights when the pointer reaches the top (docs/UI_SPEC.md §2.1).
+    func window(_ window: NSWindow, willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions = [])
+        -> NSApplication.PresentationOptions {
+        proposedOptions.union([.fullScreen, .autoHideMenuBar, .autoHideToolbar])
+    }
+
+    // In full screen the system reveals the title bar at the top of the screen: its buttons must be visible.
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        fullScreenTransition = true
+        window.setTrafficLightsHidden(false)
+        window.titleVisibility = .visible
+        updateWindowTitle(fullScreen: true)
+        applyBackground(fullScreen: true)
+    }
+
+    func windowWillExitFullScreen(_ notification: Notification) {
+        fullScreenTransition = true
+        window.titleVisibility = .hidden
+        updateWindowTitle(fullScreen: false)
+        applyBackground(fullScreen: false)
+    }
+
+    /// The system title bar is hidden in a window (the hover title bar shows the name) and shown in full screen,
+    /// where it slides down from the top with the file and app name (docs/UI_SPEC.md §2.1).
+    func updateWindowTitle(fullScreen: Bool? = nil) {
+        let name = currentURL?.lastPathComponent
+        if fullScreen ?? isFullScreen, let name {
+            window.title = "\(name) — ViVuView"
+        } else {
+            window.title = name ?? "ViVuView"
+        }
+    }
+
+    func windowDidFailToEnterFullScreen(_ window: NSWindow) { fullScreenTransition = false }
+    func windowDidFailToExitFullScreen(_ window: NSWindow) { fullScreenTransition = false }
+
     func windowDidEnterFullScreen(_ notification: Notification) {
+        layoutFilmstripInset()
         layoutInfoPanel()
         clampViewport()
         hideChrome()
+        // A hide that ran while the window was still entering full screen made them transparent.
+        window.setTrafficLightsHidden(false)
+        fullScreenTransition = false
         updateStatus()
         metalView.setNeedsRender()
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
+        // The exit animation's live resize can end just after this; keep ignoring it for a moment.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            self?.fullScreenTransition = false
+        }
+        window.setTrafficLightsHidden(!chromeVisible)
+        layoutFilmstripInset()
         layoutInfoPanel()
         resizeWindowToImage()
         updateStatus()
@@ -536,6 +649,28 @@ final class ViewerController: NSObject, NSWindowDelegate {
         case "hover": mouseMoved()
         case "unhover": mouseExited()
         case "click": toggleStatusPin()
+        case "thumbs":
+            let c = galleryThumbnailCoverage()
+            print("thumbs: \(c.shown)/\(c.visible)")
+        case "shortcuts-text":
+            print(ShortcutTable.text())
+        case "menu":
+            // Prints the right-click menu (titles, submenu counts).
+            guard let menu = contextMenu() else { throw ScriptError.message("no context menu") }
+            let titles = menu.items.filter { !$0.isSeparatorItem }.map { item -> String in
+                guard let sub = item.submenu else { return item.title }
+                return "\(item.title) [\(sub.items.filter { !$0.isSeparatorItem }.count)]"
+            }
+            print("menu: " + titles.joined(separator: " | "))
+        case let name where name.hasPrefix("scroll:"):
+            // scroll:[cmd:]<notches> — a mouse wheel turned at the window center.
+            let parts = name.split(separator: ":").dropFirst()
+            guard let notches = parts.last.flatMap({ Int32($0) }),
+                  let cg = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1, wheel1: notches, wheel2: 0, wheel3: 0)
+            else { throw ScriptError.message("bad scroll \(name)") }
+            if parts.contains("cmd") { cg.flags = .maskCommand }
+            guard let event = NSEvent(cgEvent: cg) else { throw ScriptError.message("bad scroll \(name)") }
+            scrollWheel(event)
         case let name where name.hasPrefix("settings"):
             let tab = SettingsTab(rawValue: String(name.dropFirst("settings".count).drop { $0 == ":" })) ?? .general
             (NSApp.delegate as? AppDelegate)?.showSettings(tab: tab)
@@ -553,12 +688,14 @@ final class ViewerController: NSObject, NSWindowDelegate {
             + "status=\(statusBarShown) gallery=\(galleryOpen ? "open" : "closed") sel=\(gallery.selected + 1) "
             + "detail=\(detailDescription) anim=\(animationStatus ?? "-") info=\(infoOpen ? "open" : "closed") "
             + "filmstrip=\(filmstripVisible ? "shown" : "hidden") transition=\(isTransitioning ? "running" : "idle") alpha=\(window.alphaValue) "
-            + "error=\(lastError ?? "-")"
+            + "error=\(lastError ?? "-") fullscreen=\(isFullScreen) "
+            + "title=[\(window.titleVisibility == .visible ? window.title : "")] statusbar=[\(statusBar.items.joined(separator: " · "))] shortcuts=\(ShortcutsPanel.shared.isShown)"
     }
 
     var detailDescription: String {
         if detail.source != nil { return "tiles(\(detail.tiles.count))" }
         if detail.isBuilding { return "building" }
+        if let texture, meta?.isVector == true { return "vector(\(max(texture.texture.width, texture.texture.height)))" }
         if let texture, texture.coverage >= 0.999 { return "full" }
         return "screen"
     }
@@ -569,12 +706,14 @@ final class ViewerController: NSObject, NSWindowDelegate {
         guard let rep = content.bitmapImageRepForCachingDisplay(in: bounds) else { return nil }
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-        NSColor.black.setFill()
+        // The translucent background's blur does not render into bitmaps: a gray stand-in shows where it is.
+        let rgb = backdrop?.isHidden == false ? SIMD3(0.25, 0.25, 0.27) : settings.background.rgb
+        NSColor(displayP3Red: rgb.x, green: rgb.y, blue: rgb.z, alpha: 1).setFill()
         bounds.fill()
         if let scene = metalView.snapshotImage() {
             NSGraphicsContext.current?.cgContext.draw(scene, in: metalView.frame)
         }
-        for overlay in content.subviews where overlay !== metalView && !overlay.isHidden && overlay.alphaValue > 0 {
+        for overlay in content.subviews where overlay !== metalView && overlay !== backdrop && !overlay.isHidden && overlay.alphaValue > 0 {
             // Glass does not render into bitmaps; draw a dark stand-in behind the overlay's contents.
             if overlay === titleBar || overlay === statusBar {
                 NSColor(white: 0.12, alpha: 0.85).setFill()

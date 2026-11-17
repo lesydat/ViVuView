@@ -88,7 +88,7 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 9.7 | Chép `build/ViVuView.app` vào /Applications, mở từ đó, tab Định dạng: tích JPEG | Hệ thống có thể hỏi xác nhận; double-click .jpg trong Finder mở ViVuView | | |
 | 9.8 | Bỏ tích JPEG | Trả về app mặc định trước đó | | |
 | 9.9 | Nền "Ô caro", mở PNG trong suốt | Ô caro sau phần trong suốt | | |
-| 9.10 | Trợ giúp → Phím tắt | Bảng phím đúng UI_SPEC mục 6 | | |
+| 9.10 | Trợ giúp → Phím tắt | Bảng phím tắt kính lỏng hiện giữa cửa sổ, đúng UI_SPEC mục 6.1 | | |
 
 ## M10 — Hoàn thiện
 
@@ -97,7 +97,47 @@ Chạy app: `Scripts/bundle.sh && open build/ViVuView.app --args <ảnh>` hoặc
 | 10.1 | Mở GIF / WebP / APNG động | Phát đúng tốc độ; Space dừng/phát; `,` `.` từng khung; status bar ghi "khung i/n" | | |
 | 10.2 | Mở RAW (CR3, NEF, ARW, DNG…) | Hiện nhanh từ ảnh xem trước nhúng; zoom 100% thì xử lý RAW đầy đủ | | |
 | 10.3 | Settings → RAW "Luôn xử lý RAW đầy đủ" | Mọi RAW hiện bản xử lý đầy đủ | | |
-| 10.4 | Đổi ngôn ngữ hệ thống sang English (hoặc chạy `open -a ViVuView --args -AppleLanguages "(en)"`) | Giao diện tiếng Anh | | |
+| 10.4 | Đổi ngôn ngữ hệ thống sang một ngôn ngữ app có (English, 日本語, Deutsch…) và một ngôn ngữ app không có (ví dụ Polski) | Giao diện theo ngôn ngữ đó; ngôn ngữ app không có thì tiếng Anh | | |
 | 10.5 | Mở nhiều ảnh lớn liên tục khi máy thiếu RAM | App không bị đóng; ảnh hiện tại vẫn xem được | | |
 | 10.6 | Chạy trên macOS 14 hoặc 15 (máy thật hoặc máy ảo) | Mọi mục ở trên chạy; lớp phủ dùng nền mờ tối thay cho kính | | |
 | 10.7 | Chạy trên máy Mac Intel thật | Mọi mục ở trên chạy; ghi lại tốc độ chuyển ảnh | | |
+
+## Sau M10 — Giao diện hệ thống, SVG, icon, ngôn ngữ
+
+| # | Thao tác | Kỳ vọng | Ngày | Kết quả |
+|---|---|---|---|---|
+| 11.1 | Rê chuột lên cửa sổ xem ảnh | Nút đèn giao thông và bo góc cửa sổ theo kiểu macOS hiện tại (như Finder, Preview), không phải kiểu phẳng cũ | | |
+| 11.2 | Mở app không kèm file; rồi mở một file bằng ⌘O, Finder, kéo-thả | Cửa sổ nằm đúng giữa màn hình (cả chiều ngang và dọc) | | |
+| 11.3 | Nhấn đúp vào cửa sổ trống (chưa có ảnh) | Hiện hộp chọn file như ⌘O | | |
+| 11.4 | Mở Cài đặt (⌘,), bấm qua 5 tab | Hàng biểu tượng trên thanh công cụ; nội dung là các nhóm bo góc; cửa sổ đổi chiều cao theo tab, không thừa khoảng trống | | |
+| 11.5 | Mở một file SVG, zoom sâu (⌘↑ nhiều lần) | Hình nét ở mọi mức zoom; thumbnail SVG có trong filmstrip/gallery | | |
+| 11.6 | Nhìn icon app trong Dock, Finder, Launchpad, ⌘Tab | Icon logo ViVuView, đúng hình dạng icon macOS; trên macOS 26+ có hiệu ứng kính | | |
+| 11.7 | Cài đặt → Chung → Ngôn ngữ: chọn 日本語, mở lại app; chọn lại "Theo hệ thống" | Giao diện tiếng Nhật sau khi mở lại; về ngôn ngữ hệ thống sau khi chọn lại | | |
+| 11.8 | Rê chuột lên cửa sổ có ảnh; vào rồi thoát fullscreen, rê chuột lại | Dải tiêu đề thấp vừa nút, cùng chiều cao trước và sau fullscreen; nút đèn giao thông, tên file và 3 nút bên phải nằm giữa dải | | |
+| 11.9 | Mở PNG trong suốt và một SVG khi chưa từng đổi "Nền" | Ô caro sau phần trong suốt; ảnh JPEG vẫn trên nền đen | | |
+| 11.10 | Giữ ⌘ + lăn chuột (chuột thường và trackpad); lăn chuột không giữ ⌘ khi đang zoom | ⌘ + lăn: zoom quanh con trỏ. Lăn thường: cuộn ảnh khi đang zoom, không làm gì khi đang vừa cửa sổ | | |
+| 11.11 | Mặc định: click lên ảnh, rê chuột rồi để yên 2s | Status bar ẩn cùng thanh tiêu đề (click không ghim) | | |
+| 11.12 | Bật Hiển thị → "Click lên ảnh để ghim status bar"; click một lần lên ảnh, rồi click lại | Ghim, có biểu tượng ghim; click lại thì bỏ ghim. Cú click đưa cửa sổ từ sau lên trước không ghim | | |
+| 11.13 | Fullscreen, đưa chuột lên đỉnh màn hình | Thanh tiêu đề trượt xuống có đủ 3 nút đèn giao thông | | |
+| 11.14 | Fullscreen, nhấn `T` (hoặc Filmstrip = Luôn hiện) | Ảnh co lên phía trên filmstrip, không bị đè; nhấn `T` lại thì ảnh trở về toàn màn hình | | |
+| 11.15 | Cài đặt → Định dạng | Mỗi định dạng một dòng; SVG thấy ngay trong nhóm Ảnh thông dụng, không cần cuộn | | |
+| 11.16 | Để chuột yên trên ảnh, chuyển ảnh bằng phím ← → | Thanh tiêu đề và status bar không tự hiện; rê chuột thì hiện | | |
+| 11.17 | Chuột phải (hoặc Control-click) lên ảnh và lên một thumbnail filmstrip | Menu: Mở bằng ▸, Hiện trong Finder, Copy ảnh, Copy đường dẫn, Xoay trái/phải, Theo kích thước ảnh, Chuyển vào Thùng rác; trên filmstrip thì chuyển tới ảnh đó trước | | |
+| 11.18 | Gallery toàn màn hình ở thư mục nhiều ảnh (ví dụ ~/Downloads), cuộn lên xuống | Mọi ô nhìn thấy đều có thumbnail sau ít giây | | |
+| 11.19 | Mở Gallery | Thanh trên cùng chiều cao, kiểu chữ với thanh tiêu đề cửa sổ xem ảnh; có nút đèn giao thông | | |
+| 11.20 | Cài đặt → Nền = Xám đậm; chuyển nhiều ảnh, đổi cỡ cửa sổ, thoát rồi mở lại app | Nền luôn xám, không lúc nào nháy hay nhảy sang đen | | |
+| 11.21 | Fullscreen; để chuột giữa màn hình, rồi đưa lên đỉnh | Thanh tiêu đề ẩn; đưa lên đỉnh thì trượt xuống cùng menu, có đủ 3 nút đèn giao thông | | |
+| 11.22 | Vào rồi thoát fullscreen, chuyển sang ảnh khác cỡ | Cửa sổ vẫn tự co theo ảnh | | |
+| 11.23 | Mở một file .ico / .icns | Ảnh tĩnh, status bar không ghi "khung i/n" | | |
+| 11.24 | Gallery ở ~/Downloads (có `ba er diagram.png` / `.svg`) | Các ô khác có thumbnail trong vài giây; riêng file rất nặng hiện sau | | |
+| 11.25 | Gallery và filmstrip trên ảnh nền trắng | Ô đang chọn/ảnh hiện tại có vòng màu nhấn bên ngoài, thấy rõ | | |
+| 11.26 | Chuyển ảnh ở chế độ cửa sổ (hiệu ứng trượt) | Ảnh trượt có góc bo như cửa sổ, không có lúc góc vuông đổi sang góc bo | | |
+| 11.27 | Chuột phải lên ảnh; xem menu Xem, Đi tới | Phím tắt hiện ở cột phải; menu chuột phải có Chia sẻ, zoom, xoay, Thông tin/Filmstrip/Gallery/Toàn màn hình; trong Gallery gõ chữ vẫn nhảy tới file | | |
+| 11.28 | Cài đặt → Hiệu năng → Bộ nhớ cho thumbnail | Mặc định "Tự động (… MB)" | | |
+| 11.29 | Fullscreen, đưa chuột lên đỉnh màn hình | Thanh tiêu đề có "tên file — ViVuView" và 3 nút đèn giao thông; status bar có tên file ở đầu | | |
+| 11.30 | Cài đặt → Hiển thị → Kính lỏng (Mờ / Trong) / Độ tối; rê chuột lên ảnh | Thanh tiêu đề, status bar, thanh Gallery đổi ngay theo; 0% trong nhất, 80% gần như đặc | | |
+| 11.31 | Cài đặt → Nền = Xám, rồi Xám nhạt; chuyển ảnh, mở Gallery, đổi cỡ cửa sổ | Nền đổi ngay đúng màu, không nháy đen; trên Xám nhạt dòng chữ gợi ý/lỗi là chữ tối, đọc được | | |
+| 11.32 | Cài đặt → Nền = Nửa trong suốt; đặt cửa sổ lên trên một app khác, chuyển ảnh, đổi cỡ, vào rồi ra fullscreen | Thấy app phía sau mờ tối qua nền, góc cửa sổ vẫn bo tròn; fullscreen nền đen; ra khỏi fullscreen lại trong suốt | | |
+| 11.33 | Cài đặt: kéo các thanh Độ tối, Thời lượng hiệu ứng, Độ rộng cột Gallery qua giá trị mặc định | Có vạch nhỏ dưới rãnh đúng chỗ nút ở giá trị mặc định; kéo gần thì nút hít vào vạch | | |
+| 11.34 | Ảnh vừa cửa sổ: nhấn ↑ ↓; zoom vào bằng + rồi nhấn ↑ ↓ | Vừa cửa sổ: không có gì xảy ra; đang zoom: ảnh pan lên/xuống, không đổi mức zoom | | |
+| 11.35 | Nhấn `?`, rồi ⌘/, rồi chuột phải → Phím tắt, rồi Settings → Điều khiển → Xem phím tắt…; mỗi lần đóng bằng Esc hoặc click ra ngoài | Bảng mở/đóng đúng; đọc được trên ảnh sáng lẫn tối; kéo cửa sổ thì bảng đi theo; trong fullscreen vẫn hiện; mỗi phím ghi trong bảng làm đúng như ghi | | |

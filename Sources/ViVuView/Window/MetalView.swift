@@ -23,8 +23,19 @@ final class MetalView: NSView {
     private var renderScheduled = false
     private var animationTimer: Timer?
 
-    /// Transparent views (the transition overlay) clear to nothing and let the desktop show through.
-    let transparent: Bool
+    /// Transparent views (the transition overlay, the main view on the translucent background) clear to
+    /// nothing and let what is behind show through.
+    var transparent: Bool {
+        didSet {
+            guard transparent != oldValue else { return }
+            metalLayer.isOpaque = !transparent
+            if transparent {
+                clearColor = SIMD4(0, 0, 0, 0)
+                metalLayer.backgroundColor = NSColor.clear.cgColor
+            }
+            setNeedsRender()
+        }
+    }
 
     init(renderer: Renderer, transparent: Bool = false) {
         self.renderer = renderer

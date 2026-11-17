@@ -7,8 +7,14 @@ import ViVuCore
 final class StatusBar: NSView {
     static let height: CGFloat = 24
     private let label = NSTextField(labelWithString: "")
+    /// Shown while a click has pinned the bar, so it is clear why the bar stays (docs/UI_SPEC.md §2.3).
+    private let pin = NSImageView()
     private var background: NSView!
     private(set) var items: [String] = []
+
+    var pinned = false {
+        didSet { pin.isHidden = !pinned; layoutText() }
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -18,10 +24,18 @@ final class StatusBar: NSView {
         label.translatesAutoresizingMaskIntoConstraints = false
         let holder = NSView()
         holder.addSubview(label)
+        pin.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 10, weight: .regular))
+        pin.contentTintColor = NSColor(white: 1, alpha: 0.7)
+        pin.translatesAutoresizingMaskIntoConstraints = false
+        pin.isHidden = true
+        holder.addSubview(pin)
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: holder.leadingAnchor, constant: 10),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: holder.trailingAnchor, constant: -10),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: pin.leadingAnchor, constant: -6),
             label.centerYAnchor.constraint(equalTo: holder.centerYAnchor),
+            pin.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -10),
+            pin.centerYAnchor.constraint(equalTo: holder.centerYAnchor),
         ])
         background = OverlayBackground.make(content: holder)
         background.frame = bounds
@@ -44,7 +58,7 @@ final class StatusBar: NSView {
 
     private func layoutText() {
         let font = label.font!
-        let available = bounds.width - 20
+        let available = bounds.width - 20 - (pinned ? 22 : 0)
         var shown = items
         func width(_ parts: [String]) -> CGFloat {
             (parts.joined(separator: " · ") as NSString).size(withAttributes: [.font: font]).width

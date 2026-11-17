@@ -76,6 +76,8 @@ extension ViewerController {
         detail.tier = tier
         let needs = needsDetail
         switch tier {
+        case .single where meta.isVector:
+            updateVectorDetail(url, meta: meta, texture: texture)
         case .single:
             // RAW shown from its embedded preview is only developed when zooming past the preview: developing
             // just because the user paused would change the colours under them (docs/TECH_SPEC.md §4.2).
@@ -93,21 +95,34 @@ extension ViewerController {
         updateStatus()
     }
 
-    private func startFullDecode(_ url: URL) {
+    /// SVG: re-drawn at the zoomed size (up to `VectorImage.maxSide`) instead of a fixed "full" decode.
+    private func updateVectorDetail(_ url: URL, meta: ImageMeta, texture: DecodedTexture) {
+        let shown = effectiveViewport.scale * Double(meta.orientedSize.longSide)
+        let have = Double(max(texture.texture.width, texture.texture.height))
+        guard shown > have * Tuning.detailTrigger, have < Double(VectorImage.maxSide), detail.fullTicket == nil else { return }
+        let side = min(VectorImage.maxSide, Int(shown * 1.25))
+        startFullDecode(url) {
+            let (pixels, meta) = try VectorImage.render(url, longSide: side)
+            return (pixels, meta, Double(pixels.width) / Double(max(1, meta.orientedSize.width)))
+        }
+    }
+
+    private func startFullDecode(_ url: URL, decode: (@Sendable () throws -> (PixelBuffer, ImageMeta, Double))? = nil) {
         let renderer = renderer
         detail.fullTicket = scheduler.submit(.interactive, priority: .high, work: { isCancelled in
             let state = Signposts.decode.beginInterval("Decode", id: Signposts.decode.makeSignpostID(), "full \(url.lastPathComponent)")
             defer { Signposts.decode.endInterval("Decode", state) }
-            let pixels = try ImageIODecoder.fullDecode(url)
+            let (pixels, meta, coverage) = try decode?() ?? (try ImageIODecoder.fullDecode(url), try ImageIODecoder.meta(url), 1)
             if isCancelled() { throw DecodeError.cancelled }
-            let meta = try ImageIODecoder.meta(url)
-            return DecodedTexture(texture: try renderer.makeTexture(pixels), meta: meta, coverage: 1)
+            return DecodedTexture(texture: try renderer.makeTexture(pixels), meta: meta, coverage: coverage)
         }, completion: { [weak self] result in
             guard let self, detail.url == url else { return }
             detail.fullTicket = nil
             guard case .success(let full) = result else { return }
             nav.slots[url]?.screen = full
             showDecoded(full, url: url, isNewImage: false)
+            // A vector may have been zoomed further while it was drawing.
+            if full.meta.isVector { updateDetail() }
             updateStatus()
         })
     }

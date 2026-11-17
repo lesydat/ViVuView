@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">ViVuView — biểu tượng ba cánh V</title>
+  <desc id="desc">Biểu tượng vector vẽ lại từ bản ý tưởng: cánh V xanh ngọc cùng hai vệt xanh lam trên nền xanh mực bo góc. Phần ngoài biểu tượng trong suốt.</desc>
+  <defs>
+    <linearGradient id="backWing" x1="114" y1="510" x2="437" y2="837" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0964C5"/>
+      <stop offset="0.55" stop-color="#104EAA"/>
+      <stop offset="1" stop-color="#102876"/>
+    </linearGradient>
+    <linearGradient id="middleWing" x1="186" y1="436" x2="617" y2="880" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#08ABF7"/>
+      <stop offset="0.5" stop-color="#0789ED"/>
+      <stop offset="1" stop-color="#1150AD"/>
+    </linearGradient>
+    <linearGradient id="frontWing" x1="377" y1="560" x2="1111" y2="622" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00CCE9"/>
+      <stop offset="0.42" stop-color="#00E9ED"/>
+      <stop offset="0.7" stop-color="#3FF6D8"/>
+      <stop offset="1" stop-color="#49FFA8"/>
+    </linearGradient>
+  </defs>
+  <g id="background">
+    <path fill="#030B32" d="M 297,53 H 958 C 1118,53 1207,143 1207,303 V 956 C 1207,1116 1117,1206 958,1206 H 297 C 137,1206 47,1116 47,956 V 303 C 47,143 137,53 297,53 Z"/>
+  </g>
+  <g id="mark">
+    <path id="back-wing" fill="url(#backWing)" d="M 112,506 C 181,507 222,533 251,582 L 367,766 C 388,798 414,820 439,834 C 383,851 344,836 321,799 L 200,598 C 173,552 144,526 112,506 Z"/>
+    <path id="middle-wing" fill="url(#middleWing)" d="M 181,435 C 265,436 324,461 360,515 C 398,573 459,676 518,772 C 548,820 584,852 619,880 C 551,903 497,882 466,839 C 424,781 354,662 285,552 C 249,495 219,461 181,435 Z"/>
+    <path id="front-wing" fill="url(#frontWing)" d="M 278,359 C 398,359 478,398 529,472 C 575,539 633,638 691,708 C 699,720 708,720 717,708 L 849,512 C 916,413 1018,359 1141,359 C 1094,392 1066,432 1033,482 L 789,875 C 763,916 741,937 711,938 C 675,938 650,913 624,871 L 391,489 C 353,428 318,388 278,359 Z"/>
+  </g>
+</svg>

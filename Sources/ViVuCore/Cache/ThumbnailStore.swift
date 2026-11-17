@@ -41,6 +41,10 @@ public final class ThumbnailStore: @unchecked Sendable {
             let data = try encode(pixels, alpha: false)
             return (CompressedThumbnail(data: data, size: pixels.size, imageSize: own.meta.orientedSize), pixels)
         }
+        if VectorImage.isVector(url) {
+            let (pixels, meta) = try VectorImage.render(url, longSide: longSide)
+            return (CompressedThumbnail(data: try encode(pixels, alpha: true), size: pixels.size, imageSize: meta.orientedSize), pixels)
+        }
         let source = try ImageIODecoder.source(url)
         let meta = try ImageIODecoder.meta(source: source, url: url)
         let request = ImageIODecoder.decodeSize(longSide: meta.storedSize.longSide, target: longSide, uti: meta.uti)

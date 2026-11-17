@@ -32,10 +32,10 @@ extension ViewerController {
         switch level {
         case .normal:
             detail.tiles.setBudget(tileBudget)
-            thumbs.setBudget(megabytes: settings.thumbnailMemoryMB)
+            thumbs.setBudget(megabytes: settings.effectiveThumbnailMemoryMB)
         case .warning:
             detail.tiles.setBudget(tileBudget / 2)
-            thumbs.setBudget(megabytes: settings.thumbnailMemoryMB / 2)
+            thumbs.setBudget(megabytes: settings.effectiveThumbnailMemoryMB / 2)
             dropSlots(keeping: 2)
         case .critical:
             detail.tiles.setBudget(tileBudget / 4)

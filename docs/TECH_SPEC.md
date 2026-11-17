@@ -23,7 +23,7 @@ Sources/
     Renderer.swift, Shaders.swift, Scene.swift (Quad), TextureFactory.swift,
     TileCache.swift, TileLayerRenderer.swift
   ViVuView/                   executable: AppKit (+ SwiftUI cho Settings và Info)
-    main.swift, AppDelegate.swift, MainMenu.swift, Settings.swift, FileAssociations.swift
+    main.swift, AppDelegate.swift, MainMenu.swift, Settings.swift, FileAssociations.swift, SVGRasterizer.swift
     Window/     ViewerWindow.swift, ViewerController.swift, TransitionOverlay.swift, MetalView.swift,
                 ImageSlotCache.swift
     Input/      KeyBindings.swift, TrackpadController.swift
@@ -42,7 +42,7 @@ docs/, CLAUDE.md
 - Công cụ luôn dùng bản mới nhất đang có: Swift 6.4 (Xcode 27.2), Swift 6 language mode, Swift Testing (`import Testing`), Observation (`@Observable`). libtiff bản phát hành mới nhất, ghim phiên bản trong `Scripts/build-libtiff.sh`.
 - **Deployment target macOS 14**; `Package.swift` khai `platforms: [.macOS(.v14)]`. Trình biên dịch sẽ báo lỗi nếu dùng API mới hơn mà không bọc `#available`.
 - **Universal:** arm64 + x86_64.
-- API chỉ có trên macOS mới hơn 14 chỉ được dùng ở **một chỗ**: `OverlayBackground` (nền của thanh tiêu đề, status bar, filmstrip, panel) — `if #available(macOS 26, *)` dùng vật liệu kính của hệ thống, ngược lại dùng `NSVisualEffectView` (material `.hudWindow`, luôn tối). Không rải `#available` ở nơi khác. API kính của macOS 26 phải tra tài liệu trước khi dùng, không đoán.
+- API chỉ có trên macOS mới hơn 14 chỉ được dùng ở **một chỗ**: `OverlayBackground` (nền của thanh tiêu đề, status bar, filmstrip, panel) — `if #available(macOS 26, *)` dùng vật liệu kính của hệ thống, ngược lại dùng `NSVisualEffectView` (material `.hudWindow`, luôn tối). Độ trong do người dùng chỉnh (`OverlayBackground.Look`): kiểu kính `.regular`/`.clear` (macOS 26+, mặc định `.clear`) và một lớp đen alpha 0–0,8 nằm dưới nội dung thanh; không dùng `tintColor` của kính vì tint đen lại làm thanh sáng và xám hơn (đã chụp màn hình kiểm). Mọi nền tạo ra được giữ trong bảng tham chiếu yếu để đổi ngay khi Settings đổi. Không rải `#available` ở nơi khác. API kính của macOS 26 phải tra tài liệu trước khi dùng, không đoán.
 - Khoá: dùng `OSAllocatedUnfairLock` (có từ macOS 13). Không dùng `Synchronization.Mutex` (cần macOS 15).
 - Không dùng API đã deprecated. Giới hạn kích thước texture và bộ nhớ GPU lấy từ `MTLDevice` lúc chạy (máy Intel có GPU khác nhau), không giả định hằng số.
 
@@ -63,8 +63,10 @@ docs/, CLAUDE.md
   - `CTIFFShim` trỏ `Vendor/include`; liên kết tĩnh `libtiff.a`, `libjpeg.a`, `libzstd.a` và `-lz`.
   - App không mang dylib ngoài; không cần chép hay ký thư viện. Kiểm tra: `otool -L` trên file thực thi chỉ liệt kê thư viện hệ thống.
   - Homebrew chỉ cần cho `cmake` lúc build. Ghi chú bản quyền của ba thư viện đặt ở `Resources/Licenses/` và hiện trong mục Giấy phép của app.
-- `Scripts/bundle.sh`: `swift build -c release --arch arm64 --arch x86_64` → `build/ViVuView.app/Contents/{MacOS,Resources,Info.plist}` → `codesign --force -s -` → kiểm tra `lipo -archs` đủ hai kiến trúc. `Info.plist` sinh từ `FormatCatalog` (mục 9.1), có `NSHighResolutionCapable`, `LSMinimumSystemVersion 14.0`. Bundle id tạm: `app.vivuview.ViVuView`.
-- Chuỗi giao diện dùng String Catalog (`Resources/Localizable.xcstrings`), nguồn tiếng Việt, có bản tiếng Anh. `Scripts/strings.sh` cho trình biên dịch trích các `String(localized:)` (`-emit-localized-strings`) rồi `xcstringstool sync` gộp vào catalog; `bundle.sh` dùng `xcstringstool compile` tạo `en.lproj` trong app (tiếng Việt là ngôn ngữ phát triển, dùng chính khoá).
+- `Scripts/bundle.sh`: `swift build -c release --arch arm64 --arch x86_64` → `build/ViVuView.app/Contents/{MacOS,Resources,Info.plist}` → `codesign --force -s -` → kiểm tra `lipo -archs` đủ hai kiến trúc.
+  - **Phiên bản SDK ghi trong file thực thi:** SwiftPM (trên máy này) ghi `LC_BUILD_VERSION sdk 14.0` = deployment target, dù biên dịch với SDK 27.2. AppKit đọc số này để chọn giao diện: thấy 14.0 thì chạy app ở chế độ tương thích (nút đèn giao thông phẳng kiểu cũ, control và cửa sổ Settings kiểu cũ). `bundle.sh` ghi lại đúng SDK bằng `vtool -set-build-version macos 14.0 <xcrun --sdk macosx --show-sdk-version> -replace` trước khi ký, rồi kiểm tra lại bằng `otool -l`. Deployment target vẫn là 14.0. Đo trên macOS 27: SDK đúng thì thanh tiêu đề 28→32pt, nhưng nút đèn giao thông vẫn sát góc (x=9); chỉ cửa sổ có toolbar mới có nút thụt vào kiểu mới (`.unified`: x=19, thanh tiêu đề 66pt). Vì vậy cửa sổ chính gắn một toolbar rỗng kiểu `.unifiedCompact` (x=12, thanh tiêu đề 40pt, nút nằm giữa) cho thấp (UI_SPEC §2.1); `TitleBarOverlay` cao bằng `frame.height − contentLayoutRect.height` đo khi ở cửa sổ. Không ẩn toolbar khi fullscreen: làm vậy khiến chiều cao đo được sau khi thoát fullscreen bị sai.
+  - **Icon:** `Resources/AppIcon.icon` (định dạng Icon Composer: lớp `wings.svg` cắt từ `Resources/Logo.svg`, nền màu đặc #030B32) biên dịch bằng `actool` thành `Assets.car` (Liquid Glass trên macOS 26+) và `AppIcon.icns` (macOS 14–15); `Info.plist` có `CFBundleIconFile`/`CFBundleIconName = AppIcon`. `Info.plist` sinh từ `FormatCatalog` (mục 9.1), có `NSHighResolutionCapable`, `LSMinimumSystemVersion 14.0`. Bundle id tạm: `app.vivuview.ViVuView`.
+- Chuỗi giao diện dùng String Catalog (`Resources/Localizable.xcstrings`), khoá nguồn tiếng Việt, có bản dịch cho mọi ngôn ngữ ở UI_SPEC mục 12. `Scripts/strings.sh` cho trình biên dịch trích các `String(localized:)` (`-emit-localized-strings`) rồi `xcstringstool sync` gộp vào catalog và liệt kê chuỗi thiếu bản dịch ở từng ngôn ngữ; `bundle.sh` dùng `xcstringstool compile` tạo `<lang>.lproj` cho mọi ngôn ngữ, kể cả `vi.lproj` (giá trị = khoá, `strings.sh` tự chép; thiếu bảng này thì macOS lấy chuỗi tiếng Anh của vùng phát triển), `CFBundleLocalizations` liệt kê đủ, `CFBundleDevelopmentRegion = en` để ngôn ngữ app không có rơi về tiếng Anh. Danh sách ngôn ngữ phải khớp ở `bundle.sh` và `AppLanguage.all` (`Settings.swift`).
 - Khởi động bằng `main.swift` + `AppDelegate`, không storyboard/xib. Nhận file qua `application(_:open:)`, tham số dòng lệnh, kéo-thả, ⌘O.
 
 ## 2. Mô hình dữ liệu
@@ -211,6 +213,13 @@ Lý do cần bộ đọc riêng: theo số đo công khai của FeatherView, Ima
 - Lựa chọn kéo giãn (phím `E`) được nhớ cho mọi file mở sau đó trong phiên.
 - Thumbnail và ảnh vừa màn hình của TIFF/PSB > 64MP đều đi qua bộ đọc riêng; nếu bộ đọc từ chối hoặc lỗi thì rơi về ImageIO.
 
+### 4.5 SVG (vector)
+
+- ImageIO không đọc SVG; `NSImage` (AppKit, macOS 14+) đọc được. `ViVuCore` không import AppKit nên dùng một hook: `VectorImage.install(Renderer)` (khoá `OSAllocatedUnfairLock`), lớp app cài `SVGRasterizer` trong `main.swift`. Không có renderer (vivu-bench, test) thì SVG báo `unsupported`.
+- `ImageIODecoder.meta/thumbnail/screenDecode/fullDecode`, `ThumbnailStore.make` và `ImageInfo.read` rẽ sang `VectorImage` khi đuôi file là `.svg`. `ImageMeta` báo kích thước tài liệu (CSS px) — "100%" là cỡ tác giả định — và `uti = public.svg-image` (`isVector`).
+- Không có độ phân giải gốc: giai đoạn 1 vẽ ở cạnh dài màn hình (có thể lớn hơn kích thước tài liệu, `coverage > 1`); fit không bị giới hạn 100%. Zoom quá độ nét đang có (theo `Tuning.detailTrigger`) thì vẽ lại ở cỡ đang hiển thị × 1,25, tối đa `VectorImage.maxSide` = 8192 px, thay cho bước "full decode". Nền trong suốt, theo cài đặt Nền như PNG.
+- Mỗi lần vẽ tự nạp `NSImage` riêng trên luồng decode, không chia sẻ đối tượng AppKit giữa các luồng.
+
 **Giới hạn nói thẳng:** PNG/JPEG cực lớn không truy cập ngẫu nhiên được và ImageIO không có API đọc theo dòng, nên mỗi lần mở phải decode tuần tự cả file (có thể hàng chục giây, có vòng tiến độ), và vì không lưu cache ra đĩa nên lần sau vẫn vậy. JPEG2000 lớn, FITS, GDAL ngoài phạm vi; `RegionSource` cho phép thêm backend sau.
 
 ## 5. Chuyển ảnh cực nhanh
@@ -266,7 +275,9 @@ Hành vi nhìn thấy mô tả ở UI_SPEC mục 4. Cách làm:
 
 - `ThumbnailCache` có **2 tầng, đều trong RAM**; không ghi gì ra đĩa, hết phiên là mất:
   1. *Tầng nén:* dữ liệu JPEG q80 của thumbnail cạnh dài 640px (~40KB mỗi ảnh). LRU theo byte, mặc định 384MB (≈ 9.000 ảnh; chỉnh trong Settings). Nhờ tầng này cuộn qua lại thư mục vài nghìn ảnh không phải decode lại từ file gốc.
-  2. *Tầng texture:* `MTLTexture` đã giải nén, chỉ cho các ô đang và sắp nhìn thấy; LRU cố định 128MB. Giải nén từ tầng nén ≈ 1ms mỗi ảnh, chạy ở hàng `background`.
+  2. *Tầng texture:* `MTLTexture` đã giải nén, chỉ cho các ô đang và sắp nhìn thấy; LRU theo byte; ngân sách lớn theo số ảnh các nơi đang cần cùng lúc (≈1,6MB mỗi ảnh × 1,25), tối thiểu 128MB, tối đa 768MB (`Tuning.thumbnailTexture*`). Ngân sách cố định 128MB từng làm Gallery toàn màn hình 5K (~100 ô) đẩy thumbnail đang nhìn thấy ra khỏi cache, ô thành trống. Gallery xin thumbnail cho vùng nhìn thấy cộng nửa màn hình mỗi phía. Tối đa của tầng texture là 1/4 RAM máy (chỉ chặn trường hợp bất thường); tầng nén mặc định *Tự động* = 1/16 RAM (256 MB–2 GB).
+  - **Ảnh tạo thumbnail chậm:** ảnh > 60 MP (đọc từ header) và SVG > 1 MB chạy ở hàng `largeThumbnails` riêng, 1 việc một lúc, nên ảnh nhỏ không phải chờ (đo: PNG 494 MP mất ~4,2s trong ImageIO dù đặt subsample; SVG 6 MB với ~11.000 phần tử mất 85s để NSImage đọc). Việc đã bắt đầu chạy thì không huỷ khi cuộn đi (huỷ không dừng được ImageIO, và chạy lại khiến cùng một ảnh chậm chiếm cả hai luồng). Kích thước SVG đọc từ thẻ `<svg>` gốc (width/height/viewBox) thay vì dựng cả tài liệu.
+  - **Ảnh động:** chỉ GIF, PNG (APNG), WebP, HEICS, AVIF/AVIS có nhiều khung mới là ảnh động; ICO/ICNS (nhiều cỡ), TIFF (nhiều trang), HEIC (ảnh phụ) là ảnh tĩnh. Giải nén từ tầng nén ≈ 1ms mỗi ảnh, chạy ở hàng `background`.
 - Tạo thumbnail: hiện thumbnail EXIF nhúng trước (≈1ms, mờ) → decode giảm mẫu 640px qua ImageIO → nén JPEG vào tầng 1 và đưa texture vào tầng 2. Ưu tiên ô đang nhìn thấy, huỷ khi cuộn ra ngoài. Với file tầng L-A dùng ảnh fit thu nhỏ. Ảnh có alpha giữ dạng PNG thay vì JPEG.
 - `FolderMeta` (RAM): tên file → `orientedSize`. Masonry và filmstrip cần tỉ lệ của mọi ảnh, nên ngay sau khi quét thư mục, một tác vụ nền đọc header (không decode pixel) của mọi file. Làm lại mỗi lần mở thư mục.
   - Thứ tự đọc: đoạn quanh ảnh hiện tại trước (cho filmstrip), sau đó từ đầu thư mục theo đúng thứ tự.

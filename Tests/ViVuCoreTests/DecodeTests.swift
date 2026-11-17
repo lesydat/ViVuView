@@ -71,3 +71,15 @@ import UniformTypeIdentifiers
         #expect(first.pixel(x: 10, y: 10).r > 180 && second.pixel(x: 10, y: 10).g > 160)
     }
 }
+
+@Suite struct AnimationTypeTests {
+    /// Several images in an ICO/ICNS/TIFF are sizes or pages, not frames: only animation formats animate.
+    @Test func onlyAnimationFormatsAnimate() {
+        #expect(ImageMeta(storedSize: PixelSize(width: 16, height: 16), frameCount: 3, uti: "com.compuserve.gif").isAnimated)
+        #expect(ImageMeta(storedSize: PixelSize(width: 16, height: 16), frameCount: 2, uti: "public.png").isAnimated)
+        #expect(!ImageMeta(storedSize: PixelSize(width: 16, height: 16), frameCount: 5, uti: "com.microsoft.ico").isAnimated)
+        #expect(!ImageMeta(storedSize: PixelSize(width: 16, height: 16), frameCount: 4, uti: "com.apple.icns").isAnimated)
+        #expect(!ImageMeta(storedSize: PixelSize(width: 16, height: 16), frameCount: 3, uti: "public.tiff").isAnimated)
+        #expect(!ImageMeta(storedSize: PixelSize(width: 16, height: 16), frameCount: 1, uti: "com.compuserve.gif").isAnimated)
+    }
+}

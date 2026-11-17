@@ -28,8 +28,24 @@ snapshot build/smoke/m2-hover.png
 action unhover
 wait 300
 expect status=false
+# Click-to-pin is off by default (UI_SPEC §2.3).
+action click
+wait 300
+expect status=false
+setting clickPinsStatusBar true
 action click
 wait 300
 expect status=true
+action click
+wait 300
+expect status=false
+# ⌘ + wheel zooms (UI_SPEC §5); a plain wheel at fit does nothing.
+action scroll:-2
+expect fit=true
+action scroll:cmd:3
+print
+expect fit=false
+setting clickPinsStatusBar false
+action menu
 print
 quit
